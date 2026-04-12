@@ -567,11 +567,18 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('%c SecureVault Ready ', 'background:#6366f1;color:white;font-weight:bold;font-size:14px;padding:4px 8px;border-radius:4px;');
   console.log('%c AES-256-GCM + PBKDF2(310k) + SHA-256 ', 'color:#6ee7f7;font-family:monospace;');
 
-  // PWA Service Worker Registration
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('Service Worker registered', reg))
-      .catch(err => console.error('Service Worker registration failed', err));
+  // PWA Service Worker & Manifest Registration
+  if (window.location.protocol !== 'file:') {
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = 'manifest.json';
+    document.head.appendChild(link);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('Service Worker registered', reg))
+        .catch(err => console.error('Service Worker registration failed', err));
+    }
   }
 });
 
