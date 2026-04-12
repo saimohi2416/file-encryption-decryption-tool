@@ -1954,9 +1954,6 @@ body {
   border-color: rgba(99,102,241,0.4);
 }
 
-.fw-files-container.grid-view .fw-file-item.fw-folder-item {
-  /* folder tint */
-}
 
 .fw-files-container.grid-view .fw-file-icon {
   width: 44px;
@@ -1972,6 +1969,7 @@ body {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
