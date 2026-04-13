@@ -575,9 +575,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(link);
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log('Service Worker registered', reg))
-        .catch(err => console.error('Service Worker registration failed', err));
+      // Unregister any active service workers to clear the overly aggressive development cache.
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const reg of registrations) {
+          reg.unregister().then(() => {
+            console.log('Old Service Worker unregistered successfully - please refresh once to load latest files');
+          });
+        }
+      });
     }
   }
 });

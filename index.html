@@ -217,8 +217,10 @@
           </div>
           <button class="file-change-btn" onclick="openFolderWindow()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             Change
           </button>
@@ -230,7 +232,8 @@
         </div>
 
         <!-- Windows Folder Window Trigger -->
-        <div class="folder-trigger" id="folderTrigger" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="folder-trigger" id="folderTrigger" ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
           <div class="folder-trigger-inner">
             <!-- Mini Windows Folder Preview -->
             <div class="mini-folder-window">
@@ -242,37 +245,61 @@
                 </div>
                 <span class="mini-win-title">File Explorer</span>
                 <div class="mini-win-controls">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/></svg>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2" />
+                  </svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
                 </div>
               </div>
               <div class="mini-win-body">
                 <div class="mini-sidebar">
                   <div class="mini-tree-item active">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+                    </svg>
                     Desktop
                   </div>
                   <div class="mini-tree-item">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+                    </svg>
                     Documents
                   </div>
                   <div class="mini-tree-item">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+                    </svg>
                     Downloads
                   </div>
                 </div>
                 <div class="mini-files">
                   <div class="mini-file-item">
-                    <svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" fill="rgba(99,102,241,0.3)" stroke="rgba(99,102,241,0.7)" stroke-width="1.5"/><path d="M12 2v6h6" stroke="rgba(99,102,241,0.7)" stroke-width="1.5"/></svg>
+                    <svg width="20" height="24" viewBox="0 0 20 24" fill="none">
+                      <path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z"
+                        fill="rgba(99,102,241,0.3)" stroke="rgba(99,102,241,0.7)" stroke-width="1.5" />
+                      <path d="M12 2v6h6" stroke="rgba(99,102,241,0.7)" stroke-width="1.5" />
+                    </svg>
                     <span>report.pdf</span>
                   </div>
                   <div class="mini-file-item">
-                    <svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" fill="rgba(168,85,247,0.3)" stroke="rgba(168,85,247,0.7)" stroke-width="1.5"/><path d="M12 2v6h6" stroke="rgba(168,85,247,0.7)" stroke-width="1.5"/></svg>
+                    <svg width="20" height="24" viewBox="0 0 20 24" fill="none">
+                      <path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z"
+                        fill="rgba(168,85,247,0.3)" stroke="rgba(168,85,247,0.7)" stroke-width="1.5" />
+                      <path d="M12 2v6h6" stroke="rgba(168,85,247,0.7)" stroke-width="1.5" />
+                    </svg>
                     <span>data.zip</span>
                   </div>
                   <div class="mini-file-item selected-file-preview">
-                    <svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" fill="rgba(45,212,191,0.3)" stroke="rgba(45,212,191,0.7)" stroke-width="1.5"/><path d="M12 2v6h6" stroke="rgba(45,212,191,0.7)" stroke-width="1.5"/></svg>
+                    <svg width="20" height="24" viewBox="0 0 20 24" fill="none">
+                      <path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z"
+                        fill="rgba(45,212,191,0.3)" stroke="rgba(45,212,191,0.7)" stroke-width="1.5" />
+                      <path d="M12 2v6h6" stroke="rgba(45,212,191,0.7)" stroke-width="1.5" />
+                    </svg>
                     <span>secret.doc</span>
                   </div>
                 </div>
@@ -285,7 +312,8 @@
             </div>
             <button class="open-folder-btn" id="openFolderBtn" onclick="openFolderWindow()">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
+                  stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
               </svg>
               Open Folder
             </button>
@@ -304,16 +332,17 @@
           Step 2 — Encryption Password
         </label>
         <div class="password-wrap">
-          <div class="password-field-wrap">
+          <form class="password-field-wrap" onsubmit="event.preventDefault()">
             <input type="password" id="passwordInput" class="password-input" placeholder="Enter a strong password..."
               oninput="updatePasswordStrength()" autocomplete="new-password" />
-            <button class="toggle-pass" id="togglePassBtn" onclick="togglePassword()" title="Toggle visibility">
+            <button type="button" class="toggle-pass" id="togglePassBtn" onclick="togglePassword()"
+              title="Toggle visibility">
               <svg id="eyeIcon" viewBox="0 0 24 24" fill="none">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2" />
                 <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
               </svg>
             </button>
-          </div>
+          </form>
           <!-- Strength Bar -->
           <div class="strength-container" id="strengthContainer">
             <div class="strength-bar">
@@ -333,11 +362,11 @@
         <!-- Confirm Password (Encrypt only) -->
         <div class="confirm-wrap" id="confirmWrap">
           <label class="section-label-sm" for="confirmInput">Confirm Password</label>
-          <div class="password-field-wrap">
+          <form class="password-field-wrap" onsubmit="event.preventDefault()">
             <input type="password" id="confirmInput" class="password-input"
               placeholder="Re-enter password to confirm..." oninput="checkConfirm()" autocomplete="new-password" />
             <div class="confirm-indicator" id="confirmIndicator"></div>
-          </div>
+          </form>
           <p class="confirm-msg hidden" id="confirmMsg">⚠ Passwords do not match</p>
         </div>
       </div>
@@ -542,20 +571,27 @@
         <div class="fw-titlebar-left">
           <div class="fw-window-icon">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" fill="rgba(99,102,241,0.7)" stroke="rgba(99,102,241,0.9)" stroke-width="1.5"/>
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
+                fill="rgba(99,102,241,0.7)" stroke="rgba(99,102,241,0.9)" stroke-width="1.5" />
             </svg>
           </div>
           <span class="fw-titlebar-text">File Explorer — Select a File to Encrypt</span>
         </div>
         <div class="fw-titlebar-controls">
           <button class="fw-ctrl fw-ctrl-min" title="Minimize" onclick="closeFolderWindow()">
-            <svg width="10" height="2" viewBox="0 0 10 2"><rect width="10" height="2" rx="1" fill="currentColor"/></svg>
+            <svg width="10" height="2" viewBox="0 0 10 2">
+              <rect width="10" height="2" rx="1" fill="currentColor" />
+            </svg>
           </button>
           <button class="fw-ctrl fw-ctrl-max" title="Maximize">
-            <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" rx="1.5" stroke="currentColor" fill="none"/></svg>
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <rect x="0.5" y="0.5" width="9" height="9" rx="1.5" stroke="currentColor" fill="none" />
+            </svg>
           </button>
           <button class="fw-ctrl fw-ctrl-close" title="Close" onclick="closeFolderWindow()">
-            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
           </button>
         </div>
       </div>
@@ -564,13 +600,22 @@
       <div class="fw-toolbar">
         <div class="fw-nav-btns">
           <button class="fw-nav-btn" title="Back" id="fwBackBtn" disabled>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
           </button>
           <button class="fw-nav-btn" title="Forward" id="fwFwdBtn" disabled>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
           </button>
           <button class="fw-nav-btn" title="Up" id="fwUpBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
           </button>
         </div>
 
@@ -578,7 +623,12 @@
         <div class="fw-address-bar">
           <div class="fw-breadcrumb" id="fwBreadcrumb">
             <span class="fw-crumb fw-crumb-root">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2"
+                  stroke-linejoin="round" />
+                <polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="2"
+                  stroke-linejoin="round" />
+              </svg>
               This PC
             </span>
             <span class="fw-crumb-sep">›</span>
@@ -588,17 +638,28 @@
 
         <!-- Search -->
         <div class="fw-search-wrap">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" />
+            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
           <input type="text" class="fw-search" id="fwSearch" placeholder="Search..." oninput="filterFolderFiles()" />
         </div>
 
         <!-- View Toggle -->
         <div class="fw-view-toggle">
           <button class="fw-view-btn active" id="fwGridViewBtn" onclick="setFwView('grid')" title="Grid view">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+            </svg>
           </button>
           <button class="fw-view-btn" id="fwListViewBtn" onclick="setFwView('list')" title="List view">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" />
+            </svg>
           </button>
         </div>
       </div>
@@ -611,26 +672,48 @@
           <div class="fw-sidebar-section">
             <div class="fw-sidebar-label">Quick Access</div>
             <div class="fw-sidebar-item active" onclick="fwNavTo('Desktop')" data-path="Desktop">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2" />
+                <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
               Desktop
             </div>
             <div class="fw-sidebar-item" onclick="fwNavTo('Documents')" data-path="Documents">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor"
+                  stroke-width="2" stroke-linejoin="round" />
+                <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+              </svg>
               Documents
             </div>
             <div class="fw-sidebar-item" onclick="fwNavTo('Downloads')" data-path="Downloads">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" />
+                <polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
               Downloads
             </div>
             <div class="fw-sidebar-item" onclick="fwNavTo('Pictures')" data-path="Pictures">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="2"/><polyline points="21 15 16 10 5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="2" />
+                <polyline points="21 15 16 10 5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
               Pictures
             </div>
           </div>
           <div class="fw-sidebar-section">
             <div class="fw-sidebar-label">This PC</div>
             <div class="fw-sidebar-item" onclick="fwNavTo('LocalDisk')" data-path="LocalDisk">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="5" rx="9" ry="3" stroke="currentColor" stroke-width="2"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" stroke="currentColor" stroke-width="2"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" stroke="currentColor" stroke-width="2"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <ellipse cx="12" cy="5" rx="9" ry="3" stroke="currentColor" stroke-width="2" />
+                <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" stroke="currentColor" stroke-width="2" />
+                <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" stroke="currentColor" stroke-width="2" />
+              </svg>
               Local Disk (C:)
             </div>
           </div>
@@ -653,11 +736,15 @@
           </div>
 
           <!-- Drop-here area inside window -->
-          <div class="fw-dropzone" id="fwDropzone"
-            ondragover="handleFwDragOver(event)"
-            ondragleave="handleFwDragLeave(event)"
-            ondrop="handleFwDrop(event)">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <div class="fw-dropzone" id="fwDropzone" ondragover="handleFwDragOver(event)"
+            ondragleave="handleFwDragLeave(event)" ondrop="handleFwDrop(event)">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round" />
+              <polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
             <p>Drop a file here to select it</p>
           </div>
         </div>
@@ -670,7 +757,10 @@
         <div class="fw-status-actions">
           <button class="fw-btn-secondary" onclick="closeFolderWindow()">Cancel</button>
           <button class="fw-btn-primary" id="fwOpenBtn" onclick="confirmFolderSelection()" disabled>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
             Open File
           </button>
         </div>
