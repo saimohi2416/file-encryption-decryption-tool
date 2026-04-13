@@ -1,4 +1,4 @@
-const CACHE_NAME = 'securevault-v4';
+const CACHE_NAME = 'securevault-v1';
 const ASSETS = [
   './',
   './index.html',
