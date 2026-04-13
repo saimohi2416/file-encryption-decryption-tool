@@ -1,12 +1,12 @@
 const CACHE_NAME = 'securevault-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/crypto.js',
-  '/icon.svg',
-  '/manifest.json'
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './crypto.js',
+  './icon.svg',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (e) => {
