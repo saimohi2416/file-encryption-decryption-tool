@@ -564,8 +564,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.addEventListener('dragover', e => e.preventDefault());
   document.body.addEventListener('drop', e => e.preventDefault());
 
-  console.log('%c SecureVault Ready ', 'background:#6366f1;color:white;font-weight:bold;font-size:14px;padding:4px 8px;border-radius:4px;');
-  console.log('%c AES-256-GCM + PBKDF2(310k) + SHA-256 ', 'color:#6ee7f7;font-family:monospace;');
+  // Suppress logs in production
+  // console.log('%c SecureVault Ready ', '...');
 
   // PWA Service Worker & Manifest Registration
   if (window.location.protocol !== 'file:') {
@@ -575,14 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(link);
 
     if ('serviceWorker' in navigator) {
-      // Unregister any active service workers to clear the overly aggressive development cache.
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        for (const reg of registrations) {
-          reg.unregister().then(() => {
-            console.log('Old Service Worker unregistered successfully - please refresh once to load latest files');
-          });
-        }
-      });
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   }
 });

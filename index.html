@@ -332,7 +332,7 @@
           Step 2 — Encryption Password
         </label>
         <div class="password-wrap">
-          <form class="password-field-wrap" onsubmit="event.preventDefault()">
+          <form class="password-field-wrap" onsubmit="return false;">
             <input type="password" id="passwordInput" class="password-input" placeholder="Enter a strong password..."
               oninput="updatePasswordStrength()" autocomplete="new-password" />
             <button type="button" class="toggle-pass" id="togglePassBtn" onclick="togglePassword()"
@@ -362,7 +362,7 @@
         <!-- Confirm Password (Encrypt only) -->
         <div class="confirm-wrap" id="confirmWrap">
           <label class="section-label-sm" for="confirmInput">Confirm Password</label>
-          <form class="password-field-wrap" onsubmit="event.preventDefault()">
+          <form class="password-field-wrap" onsubmit="return false;">
             <input type="password" id="confirmInput" class="password-input"
               placeholder="Re-enter password to confirm..." oninput="checkConfirm()" autocomplete="new-password" />
             <div class="confirm-indicator" id="confirmIndicator"></div>
