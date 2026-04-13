@@ -84,6 +84,16 @@ function handleFileSelect(e) {
 }
 
 function loadFile(file) {
+  // Auto-correct mode based on file extension
+  const isEncrypted = file.name.toLowerCase().endsWith('.enc');
+  if (isEncrypted && state.mode !== 'decrypt') {
+    switchMode('decrypt');
+    addLog('Auto-switched to Decrypt mode (.enc file detected)', 'info');
+  } else if (!isEncrypted && state.mode === 'decrypt') {
+    switchMode('encrypt');
+    addLog('Auto-switched to Encrypt mode (Standard file detected)', 'info');
+  }
+
   state.selectedFile = file;
 
   const folderTrigger = document.getElementById('folderTrigger');
@@ -181,7 +191,10 @@ function checkConfirm() {
 
 function togglePassword() {
   const input = document.getElementById('passwordInput');
-  input.type = input.type === 'password' ? 'text' : 'password';
+  const confirmInput = document.getElementById('confirmInput');
+  const type = input.type === 'password' ? 'text' : 'password';
+  input.type = type;
+  if (confirmInput) confirmInput.type = type;
 }
 
 // ── Steps UI ──────────────────────────────────────────────────────────────────
