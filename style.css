@@ -66,6 +66,132 @@ body {
   line-height: 1.6;
 }
 
+/* --- Splash Screen --- */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+}
+
+.splash-screen.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.splash-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.splash-logo-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 10px;
+}
+
+.splash-ring {
+  position: absolute;
+  inset: -15px;
+  border: 2px solid transparent;
+  border-top-color: var(--primary);
+  border-right-color: var(--secondary);
+  border-radius: 50%;
+  animation: splashSpin 1.5s linear infinite;
+  opacity: 0.8;
+}
+
+.splash-logo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  color: white;
+  box-shadow: 0 0 30px var(--primary-glow);
+  animation: splashPulse 2s ease-in-out infinite;
+}
+
+.splash-logo svg {
+  width: 40px;
+  height: 40px;
+}
+
+.splash-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: linear-gradient(90deg, var(--primary-light), var(--secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: splashFadeInUp 0.8s ease-out forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.splash-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  animation: splashFadeInUp 0.8s ease-out 0.2s forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.splash-progress {
+  width: 240px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 4px;
+  margin-top: 20px;
+  overflow: hidden;
+  position: relative;
+  animation: splashFadeInUp 0.8s ease-out 0.4s forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.splash-progress-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  animation: splashProgress 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes splashSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes splashPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 30px var(--primary-glow); }
+  50% { transform: scale(1.05); box-shadow: 0 0 50px var(--secondary); }
+}
+
+@keyframes splashFadeInUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splashProgress {
+  0% { width: 0%; }
+  40% { width: 60%; }
+  80% { width: 80%; }
+  100% { width: 100%; }
+}
+
 /* --- Animated Grid Background --- */
 .bg-grid {
   position: fixed;

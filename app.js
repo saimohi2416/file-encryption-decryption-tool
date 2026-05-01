@@ -566,6 +566,17 @@ function shakeElement(id) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Handle Splash Screen Animation
+  const splash = document.getElementById('splashScreen');
+  if (splash) {
+    // Wait for the CSS progress bar animation to complete (2.5s)
+    setTimeout(() => {
+      splash.classList.add('fade-out');
+      // Remove from DOM after the opacity transition completes
+      setTimeout(() => splash.remove(), 600);
+    }, 2500);
+  }
+
   // Keyboard shortcut: Enter to process when not in textarea
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
