@@ -809,8 +809,10 @@ function fwRenderFiles(filter = '') {
   filtered.forEach(entry => {
     const t = entry.type === 'folder' ? 'folder' : inferType(entry);
     const isFolder = t === 'folder';
+    const isSelected = (!isFolder && fwState.selectedFile && fwState.selectedFile.name === entry.name);
+    
     const el = document.createElement('div');
-    el.className = `fw-file-item${isFolder ? ' fw-folder-item' : ''}`;
+    el.className = `fw-file-item${isFolder ? ' fw-folder-item' : ''}${isSelected ? ' selected' : ''}`;
     el.dataset.name = entry.name;
 
     const iconHtml = makeFileSVG(t, fwState.view === 'grid' ? 44 : 22);
