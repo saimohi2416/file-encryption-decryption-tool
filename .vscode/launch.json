@@ -1,0 +1,55 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost",
+            "url": "http://localhost:8000",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            "name": "Python: Serve SecureVault Local Server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/securevault.py",
+            "args": [
+                "serve",
+                "--port",
+                "8000"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Test CLI Encryption",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/securevault.py",
+            "args": [
+                "encrypt",
+                "test.txt",
+                "test.enc",
+                "--password",
+                "secret"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Test CLI Decryption",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/securevault.py",
+            "args": [
+                "decrypt",
+                "test.enc",
+                "test_decrypted.txt",
+                "--password",
+                "secret"
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+}
