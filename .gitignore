@@ -4,3 +4,5 @@ node_modules/
 tests/
 *.log
 *.enc
+__pycache__/
+*.pyc

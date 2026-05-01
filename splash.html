@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecureVault — Initializing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-color: #050505;
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.5);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Ambient Background Glow */
+    .bg-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--primary-glow) 0%, rgba(5,5,5,0) 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.3;
+      animation: pulse-glow 3s ease-in-out infinite alternate;
+      z-index: 0;
+    }
+
+    @keyframes pulse-glow {
+      0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.2; }
+      100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.5; }
+    }
+
+    .splash-container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 3D Vault Logo Animation */
+    .vault-logo-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin-bottom: 2rem;
+      perspective: 1000px;
+    }
+
+    .vault-outer-ring {
+      position: absolute;
+      inset: 0;
+      border: 2px dashed rgba(99, 102, 241, 0.4);
+      border-radius: 50%;
+      animation: spin-slow 8s linear infinite;
+    }
+
+    .vault-inner-ring {
+      position: absolute;
+      inset: 15px;
+      border: 3px solid transparent;
+      border-top-color: var(--primary);
+      border-bottom-color: var(--primary);
+      border-radius: 50%;
+      animation: spin-fast 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    }
+
+    .vault-core {
+      position: absolute;
+      inset: 30px;
+      background: linear-gradient(135deg, #4f46e5, #818cf8);
+      border-radius: 50%;
+      box-shadow: 0 0 30px var(--primary-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: core-pulse 2s ease-in-out infinite;
+    }
+
+    .vault-core svg {
+      width: 32px;
+      height: 32px;
+      color: white;
+    }
+
+    @keyframes spin-slow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes spin-fast {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.1); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    @keyframes core-pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 20px var(--primary-glow); }
+      50% { transform: scale(1.1); box-shadow: 0 0 40px var(--primary); }
+    }
+
+    /* Text Animations */
+    .title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, #ffffff, #a5b4fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fade-up 0.8s ease forwards 0.5s;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fade-up 0.8s ease forwards 0.7s;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      width: 240px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin-top: 2rem;
+      overflow: hidden;
+      opacity: 0;
+      animation: fade-in 0.5s ease forwards 1s;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary), #a5b4fc);
+      border-radius: 4px;
+      box-shadow: 0 0 10px var(--primary);
+      animation: load-progress 3.5s cubic-bezier(0.1, 0.8, 0.3, 1) forwards 1s;
+    }
+
+    @keyframes fade-up {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fade-in {
+      to { opacity: 1; }
+    }
+
+    @keyframes load-progress {
+      0% { width: 0%; }
+      30% { width: 45%; }
+      70% { width: 80%; }
+      100% { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-glow"></div>
+
+  <div class="splash-container">
+    <div class="vault-logo-container">
+      <div class="vault-outer-ring"></div>
+      <div class="vault-inner-ring"></div>
+      <div class="vault-core">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+          <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+    </div>
+    
+    <h1 class="title">SecureVault</h1>
+    <p class="subtitle" id="status-text">Establishing secure connection...</p>
+    
+    <div class="progress-container">
+      <div class="progress-bar"></div>
+    </div>
+  </div>
+
+  <script>
+    // Update the status text as it loads
+    const statusText = document.getElementById('status-text');
+    const messages = [
+      "Establishing secure connection...",
+      "Initializing Web Crypto API...",
+      "Loading AES-256-GCM modules...",
+      "Preparing secure environment..."
+    ];
+    
+    let msgIndex = 0;
+    const interval = setInterval(() => {
+      msgIndex++;
+      if(msgIndex < messages.length) {
+        statusText.style.opacity = '0';
+        setTimeout(() => {
+          statusText.textContent = messages[msgIndex];
+          statusText.style.opacity = '1';
+        }, 300);
+      }
+    }, 800);
+
+    // Redirect to the main app after the animation completes
+    setTimeout(() => {
+      clearInterval(interval);
+      statusText.textContent = "Ready.";
+      document.body.style.opacity = '0';
+      document.body.style.transition = 'opacity 0.5s ease';
+
+      // Tell index.html to skip its own built-in splash (avoid double splash)
+      sessionStorage.setItem('skipSplash', '1');
+
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 500);
+    }, 4500);
+  </script>
+</body>
+</html>

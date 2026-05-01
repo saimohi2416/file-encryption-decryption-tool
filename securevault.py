@@ -9,9 +9,9 @@ import subprocess
 try:
     import cryptography # type: ignore
 except ImportError:
-    print("⚙️ 'cryptography' library not found. Auto-installing...")
+    print(" 'cryptography' library not found. Auto-installing...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "cryptography"])
-    print("✅ Installation complete! Restarting...")
+    print(" Installation complete! Restarting...")
     os.execv(sys.executable, ['python'] + sys.argv)
 
 # type: ignore is added to hide the 4 "missing import" problems in VS Code 
@@ -76,7 +76,7 @@ def encrypt_file(input_path, output_path, password):
         with open(input_path, 'rb') as f:
             data = f.read()
     except FileNotFoundError:
-        print(f"❌ Error: Input file '{input_path}' not found.")
+        print(f" Error: Input file '{input_path}' not found.")
         sys.exit(1)
         
     encrypted = encrypt_data(data, password)
@@ -84,9 +84,9 @@ def encrypt_file(input_path, output_path, password):
     try:
         with open(output_path, 'wb') as f:
             f.write(encrypted)
-        print(f"✅ Encrypted successfully: {output_path}")
+        print(f" Encrypted successfully: {output_path}")
     except IOError as e:
-        print(f"❌ Error writing output file: {e}")
+        print(f" Error writing output file: {e}")
         sys.exit(1)
 
 def decrypt_file(input_path, output_path, password):
@@ -94,7 +94,7 @@ def decrypt_file(input_path, output_path, password):
         with open(input_path, 'rb') as f:
             data = f.read()
     except FileNotFoundError:
-        print(f"❌ Error: Input file '{input_path}' not found.")
+        print(f" Error: Input file '{input_path}' not found.")
         sys.exit(1)
         
     decrypted = decrypt_data(data, password)
@@ -102,9 +102,9 @@ def decrypt_file(input_path, output_path, password):
     try:
         with open(output_path, 'wb') as f:
             f.write(decrypted)
-        print(f"✅ Decrypted successfully: {output_path}")
+        print(f" Decrypted successfully: {output_path}")
     except IOError as e:
-        print(f"❌ Error writing output file: {e}")
+        print(f" Error writing output file: {e}")
         sys.exit(1)
 
 # ==========================================
@@ -124,7 +124,7 @@ class SecureVaultAPIHandler(SimpleHTTPRequestHandler):
 def run_server(port=8000):
     server_address = ('', port)
     httpd = HTTPServer(server_address, SecureVaultAPIHandler)
-    print(f"🚀 SecureVault Local Server running on http://localhost:{port}")
+    print(f" SecureVault Local Server running on http://localhost:{port}")
     print("Use this URL in your browser to avoid 'file://' security errors!")
     try:
         httpd.serve_forever()
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         try:
             decrypt_file(args.input, args.output, args.password)
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f" Error: {e}")
             sys.exit(1)
     else:
         parser.print_help()
