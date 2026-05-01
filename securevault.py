@@ -3,16 +3,23 @@ import sys
 import argparse
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
-# Ensure cryptography is installed: pip install cryptography
+import subprocess
+
+# Auto-install missing dependencies so the script runs flawlessly on any PC
 try:
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.backends import default_backend
+    import cryptography # type: ignore
 except ImportError:
-    print("Error: The 'cryptography' library is missing.")
-    print("Please install it by running: pip install cryptography")
-    sys.exit(1)
+    print("⚙️ 'cryptography' library not found. Auto-installing...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "cryptography"])
+    print("✅ Installation complete! Restarting...")
+    os.execv(sys.executable, ['python'] + sys.argv)
+
+# type: ignore is added to hide the 4 "missing import" problems in VS Code 
+# when the library isn't installed yet.
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM # type: ignore
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC # type: ignore
+from cryptography.hazmat.primitives import hashes # type: ignore
+from cryptography.hazmat.backends import default_backend # type: ignore
 
 MAGIC = b"SVCR"
 VERSION = b"\x01"
