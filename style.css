@@ -2258,3 +2258,115 @@ body {
   transform: none;
   box-shadow: none;
 }
+
+/* =====================================================
+   Mobile Responsiveness (Android & iOS Friendly)
+   ===================================================== */
+@media (max-width: 768px) {
+  .header-inner {
+    padding: 0 16px;
+    height: 56px;
+  }
+  .logo-text {
+    font-size: 16px;
+  }
+  .header-badge {
+    font-size: 10px;
+    padding: 4px 8px;
+    display: none; /* Hide on very small screens to save space */
+  }
+  .hero {
+    padding: 40px 16px 30px;
+  }
+  .hero-title {
+    font-size: 2rem;
+  }
+  .app-container {
+    padding: 0 16px 40px;
+  }
+  .steps-panel {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+  }
+  .main-card {
+    border-radius: var(--radius-lg);
+  }
+  .card-section {
+    padding: 20px 16px;
+  }
+  .mode-btn {
+    padding: 10px;
+    font-size: 13px;
+  }
+  /* Vertical steps track for mobile */
+  .steps-track {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding-bottom: 0;
+  }
+  .step-connector {
+    width: 2px;
+    height: 16px;
+    margin: 0 0 0 24px;
+    background: linear-gradient(180deg, var(--border), transparent);
+  }
+  .step-item {
+    width: 100%;
+    min-width: auto;
+  }
+  /* Folder Window Modal adjustments */
+  .fw-window {
+    width: 95vw;
+    height: 90vh;
+    border-radius: 12px;
+  }
+  .fw-sidebar {
+    display: none;
+  }
+  .fw-toolbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 8px;
+    gap: 8px;
+  }
+  .fw-nav-btns {
+    flex: 1;
+  }
+  .fw-search-wrap {
+    width: 100%;
+  }
+  .password-wrap, .confirm-wrap {
+    flex-direction: column;
+  }
+  .password-field-wrap {
+    width: 100%;
+  }
+  .strength-container {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 12px;
+  }
+  /* Pass reqs as grid */
+  .pass-reqs {
+    grid-template-columns: 1fr 1fr;
+  }
+  .action-btn {
+    width: 100%;
+    padding: 16px;
+  }
+  .file-selected {
+    flex-direction: column;
+    text-align: center;
+    position: relative;
+  }
+  .file-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+  .file-change-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
