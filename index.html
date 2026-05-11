@@ -353,6 +353,7 @@
         </label>
         <div class="password-wrap">
           <form class="password-field-wrap" onsubmit="return false;">
+            <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true" />
             <input type="password" id="passwordInput" class="password-input" placeholder="Enter a strong password..."
               oninput="updatePasswordStrength()" autocomplete="new-password" />
             <button type="button" class="toggle-pass" id="togglePassBtn" onclick="togglePassword()"
@@ -383,6 +384,7 @@
         <div class="confirm-wrap" id="confirmWrap">
           <label class="section-label-sm" for="confirmInput">Confirm Password</label>
           <form class="password-field-wrap" onsubmit="return false;">
+            <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true" />
             <input type="password" id="confirmInput" class="password-input"
               placeholder="Re-enter password to confirm..." oninput="checkConfirm()" autocomplete="new-password" />
             <div class="confirm-indicator" id="confirmIndicator"></div>

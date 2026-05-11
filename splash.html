@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SecureVault &#8212; Initializing</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg-color: #050505;
@@ -43,7 +43,20 @@
       transform: translate(-50%, -50%);
       opacity: 0.3;
       animation: pulse-glow 3s ease-in-out infinite alternate;
+      z-index: 1;
+    }
+
+    /* Background Video */
+    .bg-video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
       z-index: 0;
+      opacity: 0.15;
+      pointer-events: none;
     }
 
     @keyframes pulse-glow {
@@ -120,27 +133,41 @@
       50% { transform: scale(1.1); box-shadow: 0 0 40px var(--primary); }
     }
 
-    /* Text Animations */
+    /* Cinematic Text Animations */
     .title {
-      font-size: 2.5rem;
-      font-weight: 700;
-      letter-spacing: -0.05em;
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
       margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: center;
+      perspective: 800px;
+    }
+
+    .title span {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(60px) scale(0.5) rotateX(-90deg);
+      transform-origin: bottom;
       background: linear-gradient(to right, #ffffff, #a5b4fc);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      opacity: 0;
-      transform: translateY(20px);
-      animation: fade-up 0.8s ease forwards 0.5s;
+      animation: letter-assemble 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation-delay: calc(var(--i) * 0.08s + 0.5s);
+      text-shadow: 0 0 20px rgba(165, 180, 252, 0.4);
     }
 
-    .subtitle {
-      font-size: 1rem;
-      color: var(--text-muted);
-      opacity: 0;
-      transform: translateY(20px);
-      animation: fade-up 0.8s ease forwards 0.7s;
-      transition: opacity 0.3s ease;
+    @keyframes letter-assemble {
+      0% {
+        opacity: 0;
+        transform: translateY(60px) scale(0.5) rotateX(-90deg);
+        filter: blur(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotateX(0deg);
+        filter: blur(0px);
+      }
     }
 
     /* Progress Bar */
@@ -168,6 +195,16 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    .subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fade-up 0.8s ease forwards 1.5s; /* delayed until title finishes */
+      transition: opacity 0.3s ease;
+      letter-spacing: 0.05em;
+    }
+
     @keyframes fade-in {
       to { opacity: 1; }
     }
@@ -182,6 +219,7 @@
 </head>
 <body>
 
+  <!-- Background glow instead of the video file -->
   <div class="bg-glow"></div>
 
   <div class="splash-container">
@@ -196,7 +234,19 @@
       </div>
     </div>
     
-    <h1 class="title">SecureVault</h1>
+    <h1 class="title">
+      <span style="--i:1">S</span>
+      <span style="--i:2">e</span>
+      <span style="--i:3">c</span>
+      <span style="--i:4">u</span>
+      <span style="--i:5">r</span>
+      <span style="--i:6">e</span>
+      <span style="--i:7">V</span>
+      <span style="--i:8">a</span>
+      <span style="--i:9">u</span>
+      <span style="--i:10">l</span>
+      <span style="--i:11">t</span>
+    </h1>
     <p class="subtitle" id="status-text">Establishing secure connection...</p>
     
     <div class="progress-container">
