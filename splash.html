@@ -46,18 +46,18 @@
       z-index: 1;
     }
 
-    /* Background Video */
-    .bg-video {
+    /* Canvas Background */
+    .bg-canvas {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
       z-index: 0;
-      opacity: 0.15;
       pointer-events: none;
+      opacity: 0.8;
     }
+
 
     @keyframes pulse-glow {
       0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.2; }
@@ -151,6 +151,7 @@
       transform-origin: bottom;
       background: linear-gradient(to right, #ffffff, #a5b4fc);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
       animation: letter-assemble 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
       animation-delay: calc(var(--i) * 0.08s + 0.5s);
@@ -246,7 +247,10 @@
 </head>
 <body>
 
-  <!-- Background glow instead of the video file -->
+  <!-- Dynamic Cryptographic Canvas Background -->
+  <canvas id="crypto-canvas" class="bg-canvas"></canvas>
+
+  <!-- Background glow -->
   <div class="bg-glow"></div>
 
   <div class="splash-container">
@@ -282,6 +286,63 @@
   </div>
 
   <script>
+    // Cryptographic Hex Rain Animation
+    const canvas = document.getElementById('crypto-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    let width, height, columns, drops;
+    const chars = '0123456789ABCDEF'.split('');
+    const fontSize = 16;
+
+    function initCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      columns = Math.floor(width / fontSize) + 1;
+      drops = [];
+      for(let x = 0; x < columns; x++) {
+        drops[x] = Math.random() * -100;
+      }
+    }
+    window.addEventListener('resize', initCanvas);
+    initCanvas();
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(5, 5, 5, 0.15)';
+      ctx.fillRect(0, 0, width, height);
+      
+      ctx.font = '500 ' + fontSize + 'px monospace';
+      
+      for(let i = 0; i < drops.length; i++) {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+        
+        if (Math.random() > 0.9) {
+          ctx.fillStyle = 'rgba(129, 140, 248, 0.8)';
+        } else {
+          ctx.fillStyle = 'rgba(79, 70, 229, 0.3)';
+        }
+        
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        
+        if(drops[i] * fontSize > height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+    
+    let lastTime = 0;
+    const fps = 30;
+    const intervalTime = 1000 / fps;
+
+    function animate(time) {
+      if (time - lastTime > intervalTime) {
+        drawMatrix();
+        lastTime = time;
+      }
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
     // Update the status text as it loads
     const statusText = document.getElementById('status-text');
     const messages = [

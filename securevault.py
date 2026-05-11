@@ -25,7 +25,7 @@ MAGIC = b"SVCR"
 VERSION = b"\x01"
 SALT_LEN = 16
 IV_LEN = 12
-PBKDF2_ITERS = 310_000
+PBKDF2_ITERS = 600_000
 
 def derive_key(password: str, salt: bytes) -> bytes:
     """Derive AES-256 key using PBKDF2 exactly as the Web Crypto API does."""

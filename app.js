@@ -942,3 +942,261 @@ document.addEventListener('keydown', (e) => {
     if (overlay.classList.contains('open')) closeFolderWindow();
   }
 });
+
+// ══════════════════════════════════════════════════════════════════
+//  CYBER SUITE DASHBOARD LOGIC
+// ══════════════════════════════════════════════════════════════════
+
+function switchTab(tabId, e) {
+  if (e) e.preventDefault();
+  
+  // Update Nav Items
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('tabBtn-' + tabId).classList.add('active');
+
+  // Update Contents
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('content-' + tabId).classList.add('active');
+
+  // Update Topbar Title
+  const titles = {
+    'vault': 'Dashboard / File Vault',
+    'firewall': 'Dashboard / Enterprise Secure Firewall',
+    'cases': 'Dashboard / Cyber Cases Log',
+    'ledger': 'Dashboard / Unified File Ledger',
+    'ai': 'Dashboard / AI Security Copilot'
+  };
+  document.getElementById('topbarTitle').textContent = titles[tabId];
+
+  if (tabId === 'firewall') initFirewallData();
+  if (tabId === 'cases') initCasesData();
+  if (tabId === 'ledger') initLedgerData();
+}
+
+function initFirewallData() {
+  const tbody = document.getElementById('firewallTableBody');
+  if (tbody.children.length > 0) return; // already initialized
+
+  const connections = [
+    { proto: 'TCP', local: '192.168.1.105:443', foreign: '104.21.45.120:443', state: 'ESTABLISHED', action: 'ALLOW' },
+    { proto: 'TCP', local: '192.168.1.105:22', foreign: '45.33.22.11:54321', state: 'SYN_RECV', action: 'BLOCK' },
+    { proto: 'UDP', local: '0.0.0.0:53', foreign: '8.8.8.8:53', state: 'LISTENING', action: 'ALLOW' },
+    { proto: 'TCP', local: '127.0.0.1:8080', foreign: '127.0.0.1:52134', state: 'ESTABLISHED', action: 'ALLOW' },
+    { proto: 'TCP', local: '192.168.1.105:80', foreign: '185.15.22.1:80', state: 'TIME_WAIT', action: 'DROP' }
+  ];
+
+  connections.forEach(c => {
+    const tr = document.createElement('tr');
+    const badge = c.action === 'ALLOW' ? 'bg-success-subtle' : 'bg-danger-subtle';
+    tr.innerHTML = `
+      <td>${c.proto}</td>
+      <td style="font-family:monospace; color:var(--text);">${c.local}</td>
+      <td style="font-family:monospace; color:var(--text-muted);">${c.foreign}</td>
+      <td>${c.state}</td>
+      <td><span class="badge-status ${badge}">${c.action}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+let caseCounter = 1042;
+function initCasesData() {
+  const tbody = document.getElementById('casesTableBody');
+  if (tbody.children.length > 0) return;
+  generateMockCase('SQL Injection Attempt', 'High', 'Resolved');
+  generateMockCase('Unauthorized Port Scan', 'Medium', 'Blocked');
+  generateMockCase('Failed SSH Login', 'Low', 'Investigating');
+}
+
+function generateMockCase(type = null, severity = null, status = null) {
+  const tbody = document.getElementById('casesTableBody');
+  
+  const types = ['DDoS Attempt (Threat Intel Blocked)', 'Malware Signature Match', 'Corporate Security Policy Violation', 'Brute Force Attack', 'Data Exfiltration Attempt'];
+  const severities = ['Critical', 'High', 'Medium', 'Low'];
+  const statuses = ['Active', 'Investigating', 'Blocked', 'Resolved'];
+
+  const t = type || types[Math.floor(Math.random() * types.length)];
+  const s = severity || severities[Math.floor(Math.random() * severities.length)];
+  const st = status || statuses[Math.floor(Math.random() * statuses.length)];
+
+  const now = new Date();
+  const time = now.toISOString().replace('T', ' ').substring(0, 19);
+
+  let sevBadge = 'bg-info-subtle';
+  if (s === 'Critical') sevBadge = 'bg-danger-subtle';
+  else if (s === 'High') sevBadge = 'bg-warning-subtle';
+
+  let stBadge = 'bg-success-subtle';
+  if (st === 'Active') stBadge = 'bg-danger-subtle';
+  else if (st === 'Investigating') stBadge = 'bg-warning-subtle';
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="font-family:monospace; font-weight:bold;">#SEC-${caseCounter++}</td>
+    <td style="color:var(--text-muted);">${time}</td>
+    <td>${t}</td>
+    <td><span class="badge-status ${sevBadge}">${s}</span></td>
+    <td><span class="badge-status ${stBadge}">${st}</span></td>
+  `;
+  
+  if (tbody.firstChild) {
+    tbody.insertBefore(tr, tbody.firstChild);
+  } else {
+    tbody.appendChild(tr);
+  }
+
+  // Update threat count in Firewall
+  const tCount = document.getElementById('threatCount');
+  if (tCount) {
+    tCount.textContent = (parseInt(tCount.textContent.replace(',','')) + 1).toLocaleString();
+  }
+}
+
+function initLedgerData() {
+  const tbody = document.getElementById('ledgerTableBody');
+  if (tbody.children.length > 0) return;
+  
+  const ledgers = [
+    { hash: '0x3f...9e', file: 'contract_q1.pdf', op: 'ENCRYPT', size: '2.4 MB', status: 'SUCCESS' },
+    { hash: '0xa1...2b', file: 'backup_keys.zip', op: 'DECRYPT', size: '1.1 MB', status: 'SUCCESS' },
+    { hash: '0x9c...7f', file: 'passwords.txt', op: 'ENCRYPT', size: '4.0 KB', status: 'SUCCESS' }
+  ];
+
+  ledgers.forEach(l => appendLedgerEntry(l.hash, l.file, l.op, l.size, l.status));
+}
+
+function appendLedgerEntry(hash, file, op, size, status) {
+  const tbody = document.getElementById('ledgerTableBody');
+  if (!tbody) return;
+  const now = new Date();
+  const time = now.toISOString().replace('T', ' ').substring(0, 19);
+
+  const tr = document.createElement('tr');
+  const badge = op === 'ENCRYPT' ? 'bg-info-subtle' : 'bg-warning-subtle';
+  tr.innerHTML = `
+    <td style="font-family:monospace; color:var(--primary-light);">${hash}</td>
+    <td style="color:var(--text-muted);">${time}</td>
+    <td>${file}</td>
+    <td><span class="badge-status ${badge}">${op}</span></td>
+    <td>${size}</td>
+    <td><span class="badge-status bg-success-subtle">${status}</span></td>
+  `;
+  if (tbody.firstChild) tbody.insertBefore(tr, tbody.firstChild);
+  else tbody.appendChild(tr);
+}
+
+// Hook ledger into actual encryption flow
+const originalShowResultSuccess = showResultSuccess;
+showResultSuccess = function(outputName, inputSize, outputSize) {
+  originalShowResultSuccess(outputName, inputSize, outputSize);
+  // Add to ledger dynamically
+  const op = state.mode.toUpperCase();
+  const hash = '0x' + Array.from({length:8}, () => Math.floor(Math.random()*16).toString(16)).join('') + '...';
+  appendLedgerEntry(hash, outputName, op, formatBytes(outputSize), 'SUCCESS');
+};
+
+function handleAiKey(e) {
+  if (e.key === 'Enter') sendAiMessage();
+}
+
+function sendAiMessage() {
+  const input = document.getElementById('aiInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  const chat = document.getElementById('aiChatWindow');
+  
+  // User message
+  const userMsg = document.createElement('div');
+  userMsg.className = 'ai-msg ai-user';
+  userMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div class="ai-bubble">${text}</div>`;
+  chat.appendChild(userMsg);
+  chat.scrollTop = chat.scrollHeight;
+
+  // AI Typing
+  // AI Typing
+  setTimeout(() => {
+    const sysMsg = document.createElement('div');
+    sysMsg.className = 'ai-msg ai-sys';
+    sysMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">Analyzing context and checking cryptographic parameters...<br><br>The file structures appear secure. I have parsed your deeper notes and verified that they can be appended to the Unified Ledger using AES-256-GCM without exposing key artifacts.</div>`;
+    chat.appendChild(sysMsg);
+    chat.scrollTop = chat.scrollHeight;
+  }, 1000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ADVANCED SECURITY FEATURES (STEGO, LOCKDOWN, DECOY, BURN)
+// ══════════════════════════════════════════════════════════════════
+
+// Steganography Toggle
+function toggleStegoInput() {
+  const chk = document.getElementById('chkStego');
+  const area = document.getElementById('stegoInputArea');
+  if (chk && area) {
+    area.style.display = chk.checked ? 'block' : 'none';
+  }
+}
+
+// Decoy Vault / Master Authentication
+let isDecoyVault = false;
+function authMaster() {
+  const pwd = document.getElementById('masterPassword').value;
+  const err = document.getElementById('masterAuthError');
+  if (!pwd) {
+    err.style.display = 'block';
+    return;
+  }
+  
+  if (pwd === 'decoy') {
+    // Load Plausible Deniability State
+    isDecoyVault = true;
+    document.getElementById('masterLoginOverlay').classList.remove('open');
+    populateDecoyVault();
+    generateMockCase('Decoy Vault Accessed', 'Low', 'Active');
+  } else if (pwd === 'admin') {
+    // Normal Secure State
+    isDecoyVault = false;
+    document.getElementById('masterLoginOverlay').classList.remove('open');
+    generateMockCase('Master Vault Mount', 'Low', 'Resolved');
+  } else {
+    err.style.display = 'block';
+  }
+}
+
+function populateDecoyVault() {
+  // Clear normal VFS and inject dummy files to fake out attackers
+  const vfs = document.getElementById('fwFilesContainer');
+  if(vfs) {
+    vfs.innerHTML = `
+      <div class="mini-file-item"><svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" fill="rgba(168,85,247,0.3)" stroke="rgba(168,85,247,0.7)" stroke-width="1.5"/><path d="M12 2v6h6" stroke="rgba(168,85,247,0.7)" stroke-width="1.5"/></svg><span>budget_2020.xls</span></div>
+      <div class="mini-file-item"><svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" fill="rgba(99,102,241,0.3)" stroke="rgba(99,102,241,0.7)" stroke-width="1.5"/><path d="M12 2v6h6" stroke="rgba(99,102,241,0.7)" stroke-width="1.5"/></svg><span>vacation_photos.zip</span></div>
+    `;
+  }
+}
+
+// Panic Button / Lockdown
+function triggerLockdown() {
+  const overlay = document.getElementById('lockdownOverlay');
+  if(overlay) {
+    overlay.style.display = 'flex';
+    document.getElementById('rescuePassword').value = '';
+    document.getElementById('rescueError').style.display = 'none';
+    generateMockCase('EMERGENCY LOCKDOWN TRIGGERED', 'Critical', 'Active');
+    
+    // Simulate wiping the filesystem from memory
+    const vfs = document.getElementById('fwFilesContainer');
+    if(vfs) vfs.innerHTML = ''; 
+  }
+}
+
+function liftLockdown() {
+  const pwd = document.getElementById('rescuePassword').value;
+  const err = document.getElementById('rescueError');
+  if (pwd === 'rescue') {
+    document.getElementById('lockdownOverlay').style.display = 'none';
+    generateMockCase('Lockdown Lifted', 'Medium', 'Resolved');
+  } else {
+    err.style.display = 'block';
+  }
+}
