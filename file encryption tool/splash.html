@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecureVault &#8212; Initializing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-color: #050505;
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.5);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Ambient Background Glow */
+    .bg-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--primary-glow) 0%, rgba(5,5,5,0) 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.3;
+      animation: pulse-glow 3s ease-in-out infinite alternate;
+      z-index: 1;
+    }
+
+    /* Canvas Background */
+    .bg-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.8;
+    }
+
+
+    @keyframes pulse-glow {
+      0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.2; }
+      100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.5; }
+    }
+
+    .splash-container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 3D Vault Logo Animation */
+    .vault-logo-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin-bottom: 2rem;
+      perspective: 1000px;
+    }
+
+    .vault-outer-ring {
+      position: absolute;
+      inset: 0;
+      border: 2px dashed rgba(99, 102, 241, 0.4);
+      border-radius: 50%;
+      animation: spin-slow 8s linear infinite;
+    }
+
+    .vault-inner-ring {
+      position: absolute;
+      inset: 15px;
+      border: 3px solid transparent;
+      border-top-color: var(--primary);
+      border-bottom-color: var(--primary);
+      border-radius: 50%;
+      animation: spin-fast 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    }
+
+    .vault-core {
+      position: absolute;
+      inset: 30px;
+      background: linear-gradient(135deg, #4f46e5, #818cf8);
+      border-radius: 50%;
+      box-shadow: 0 0 30px var(--primary-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: core-pulse 2s ease-in-out infinite;
+    }
+
+    .vault-core svg {
+      width: 32px;
+      height: 32px;
+      color: white;
+    }
+
+    @keyframes spin-slow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes spin-fast {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.1); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    @keyframes core-pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 20px var(--primary-glow); }
+      50% { transform: scale(1.1); box-shadow: 0 0 40px var(--primary); }
+    }
+
+    /* Cinematic Text Animations */
+    .title {
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: center;
+      perspective: 800px;
+    }
+
+    .title span {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(60px) scale(0.5) rotateX(-90deg);
+      transform-origin: bottom;
+      background: linear-gradient(to right, #ffffff, #a5b4fc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: letter-assemble 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation-delay: calc(var(--i) * 0.08s + 0.5s);
+      text-shadow: 0 0 20px rgba(165, 180, 252, 0.4);
+    }
+
+    @keyframes letter-assemble {
+      0% {
+        opacity: 0;
+        transform: translateY(60px) scale(0.5) rotateX(-90deg);
+        filter: blur(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotateX(0deg);
+        filter: blur(0px);
+      }
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      width: 240px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin-top: 2rem;
+      overflow: hidden;
+      opacity: 0;
+      animation: fade-in 0.5s ease forwards 1s;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary), #a5b4fc);
+      border-radius: 4px;
+      box-shadow: 0 0 10px var(--primary);
+      animation: load-progress 3.5s cubic-bezier(0.1, 0.8, 0.3, 1) forwards 1s;
+    }
+
+    @keyframes fade-up {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fade-up 0.8s ease forwards 1.5s; /* delayed until title finishes */
+      transition: opacity 0.3s ease;
+      letter-spacing: 0.05em;
+    }
+
+    @keyframes fade-in {
+      to { opacity: 1; }
+    }
+
+    @keyframes load-progress {
+      0% { width: 0%; }
+      30% { width: 45%; }
+      70% { width: 80%; }
+      100% { width: 100%; }
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 600px) {
+      .title {
+        font-size: 2.2rem;
+      }
+      .vault-logo-container {
+        width: 90px;
+        height: 90px;
+      }
+      .vault-inner-ring {
+        inset: 12px;
+      }
+      .vault-core {
+        inset: 24px;
+      }
+      .vault-core svg {
+        width: 24px;
+        height: 24px;
+      }
+      .progress-container {
+        width: 200px;
+      }
+      .subtitle {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dynamic Cryptographic Canvas Background -->
+  <canvas id="crypto-canvas" class="bg-canvas"></canvas>
+
+  <!-- Background glow -->
+  <div class="bg-glow"></div>
+
+  <div class="splash-container">
+    <div class="vault-logo-container">
+      <div class="vault-outer-ring"></div>
+      <div class="vault-inner-ring"></div>
+      <div class="vault-core">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+          <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+    </div>
+    
+    <h1 class="title">
+      <span style="--i:1">S</span>
+      <span style="--i:2">e</span>
+      <span style="--i:3">c</span>
+      <span style="--i:4">u</span>
+      <span style="--i:5">r</span>
+      <span style="--i:6">e</span>
+      <span style="--i:7">V</span>
+      <span style="--i:8">a</span>
+      <span style="--i:9">u</span>
+      <span style="--i:10">l</span>
+      <span style="--i:11">t</span>
+    </h1>
+    <p class="subtitle" id="status-text">Establishing secure connection...</p>
+    
+    <div class="progress-container">
+      <div class="progress-bar"></div>
+    </div>
+  </div>
+
+  <script>
+    // Cryptographic Hex Rain Animation
+    const canvas = document.getElementById('crypto-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    let width, height, columns, drops;
+    const chars = '0123456789ABCDEF'.split('');
+    const fontSize = 16;
+
+    function initCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      columns = Math.floor(width / fontSize) + 1;
+      drops = [];
+      for(let x = 0; x < columns; x++) {
+        drops[x] = Math.random() * -100;
+      }
+    }
+    window.addEventListener('resize', initCanvas);
+    initCanvas();
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(5, 5, 5, 0.15)';
+      ctx.fillRect(0, 0, width, height);
+      
+      ctx.font = '500 ' + fontSize + 'px monospace';
+      
+      for(let i = 0; i < drops.length; i++) {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+        
+        if (Math.random() > 0.9) {
+          ctx.fillStyle = 'rgba(129, 140, 248, 0.8)';
+        } else {
+          ctx.fillStyle = 'rgba(79, 70, 229, 0.3)';
+        }
+        
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        
+        if(drops[i] * fontSize > height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+    
+    let lastTime = 0;
+    const fps = 30;
+    const intervalTime = 1000 / fps;
+
+    function animate(time) {
+      if (time - lastTime > intervalTime) {
+        drawMatrix();
+        lastTime = time;
+      }
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    // Update the status text as it loads
+    const statusText = document.getElementById('status-text');
+    const messages = [
+      "Establishing secure connection...",
+      "Initializing Web Crypto API...",
+      "Loading AES-256-GCM modules...",
+      "Preparing secure environment..."
+    ];
+    
+    let msgIndex = 0;
+    const interval = setInterval(() => {
+      msgIndex++;
+      if(msgIndex < messages.length) {
+        statusText.style.opacity = '0';
+        setTimeout(() => {
+          statusText.textContent = messages[msgIndex];
+          statusText.style.opacity = '1';
+        }, 300);
+      }
+    }, 800);
+
+    // Redirect to the main app after the animation completes
+    setTimeout(() => {
+      clearInterval(interval);
+      statusText.textContent = "Ready.";
+      document.body.style.opacity = '0';
+      document.body.style.transition = 'opacity 0.5s ease';
+
+      // Tell index.html to skip its own built-in splash (avoid double splash)
+      sessionStorage.setItem('skipSplash', '1');
+
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 500);
+    }, 4500);
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "SecureVault File Encryption",
+  "short_name": "SecureVault",
+  "description": "AES-256-GCM file encryption and decryption tool.",
+  "start_url": "splash.html",
+  "display": "standalone",
+  "background_color": "#0c0e16",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
