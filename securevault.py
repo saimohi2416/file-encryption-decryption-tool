@@ -121,15 +121,46 @@ class SecureVaultAPIHandler(SimpleHTTPRequestHandler):
         '.svg': 'image/svg+xml'
     })
 
+def get_local_ip():
+    import socket
+    try:
+        # Create a dummy connection to a public IP to find the primary interface's local IP address
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
 def run_server(port=8000):
-    server_address = ('', port)
+    server_address = ('0.0.0.0', port)
     httpd = HTTPServer(server_address, SecureVaultAPIHandler)
-    print(f" SecureVault Local Server running on http://localhost:{port}")
-    print("Use this URL in your browser to avoid 'file://' security errors!")
+    local_ip = get_local_ip()
+    
+    print("\n" + "="*75)
+    print("  [SECURED] SECUREVAULT ENTERPRISE PORTABLE WEB SERVER RUNNING")
+    print("="*75)
+    print(f"  Local Access:   http://localhost:{port}")
+    if local_ip != "127.0.0.1":
+        print(f"  Network Access: http://{local_ip}:{port}  <-- Share this link on your Wi-Fi/LAN!")
+    print("="*75)
+    print("\n  [WARNING] IMPORTANT - SHARING INFORMATION & BROWSER SECURITY RULES:")
+    print("  Modern browsers block Web Crypto features (necessary for SecureVault) on")
+    print("  insecure HTTP sites. To access the app from another computer:")
+    print("  Option A (Recommended): Deploy to a secure host like Vercel or GitHub Pages (HTTPS).")
+    print(f"  Option B: Go to http://{local_ip}:{port} on the other computer, then:")
+    print("     1. Open Chrome/Edge and navigate to:")
+    print("        chrome://flags/#unsafely-treat-insecure-origin-as-secure")
+    print(f"     2. Add 'http://{local_ip}:{port}' to the text area.")
+    print("     3. Change the dropdown selection to 'Enabled' and click Relaunch/Restart.")
+    print("="*75 + "\n")
+    
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="SecureVault Advanced CLI Engine")

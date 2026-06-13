@@ -20,6 +20,24 @@
 
 <body>
 
+  <!-- Insecure Context Warning Banner -->
+  <div id="secureContextWarning" class="secure-context-warning hidden">
+    <div class="warning-content">
+      <div class="warning-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" class="warning-icon">
+          <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="warning-text">
+        <strong>Insecure Context Blocked</strong>
+        <p>Your browser disables web cryptographic functions (Web Crypto API) on insecure HTTP origins. To use encryption/decryption:
+           either deploy to a secure host (HTTPS), access via <code>http://localhost:8000</code>, or enable the browser override flag <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code> for this IP.
+        </p>
+      </div>
+      <button class="warning-close-btn" onclick="document.getElementById('secureContextWarning').classList.add('hidden')" title="Dismiss">&times;</button>
+    </div>
+  </div>
+
   <!-- Animated Splash Screen -->
   <div id="splashScreen" class="splash-screen">
     <div class="splash-content">
@@ -641,7 +659,7 @@
       <p>Powered by Global Threat Intelligence. Real-time active connection monitoring and intrusion prevention system.</p>
     </div>
     
-    <div class="firewall-grid">
+    <div class="firewall-grid" style="grid-template-columns: repeat(4, 1fr);">
       <div class="fw-stat-card">
         <div class="fw-stat-title">Inbound Traffic</div>
         <div class="fw-stat-value text-accent">1.2 GB/s</div>
@@ -651,7 +669,14 @@
         <div class="fw-stat-value text-primary">450 MB/s</div>
       </div>
       <div class="fw-stat-card">
-        <div class="fw-stat-title">Blocked Threats</div>
+        <div class="fw-stat-title">Threat Language Vectors</div>
+        <div class="fw-stat-value" style="font-size: 14px; font-family: monospace; color: #fff;">
+          <span style="color:#eab308;">Python 45%</span> | <span style="color:#3b82f6;">C++ 30%</span><br>
+          <span style="color:#ef4444;">Rust 15%</span> | <span style="color:#10b981;">JS 10%</span>
+        </div>
+      </div>
+      <div class="fw-stat-card">
+        <div class="fw-stat-title">Blocked Execution Payloads</div>
         <div class="fw-stat-value text-danger" id="threatCount">1,248</div>
       </div>
     </div>
@@ -989,7 +1014,7 @@
   <!-- ══════════════ END FOLDER WINDOW ══════════════ -->
 
   <!-- Decoy Vault Login Overlay -->
-  <div class="fw-overlay open" id="masterLoginOverlay" style="z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #050505;">
+  <div class="fw-overlay" id="masterLoginOverlay" style="z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #050505;">
     <div style="max-width:400px; width:100%; text-align:center;">
       <svg viewBox="0 0 24 24" fill="none" style="width:64px; height:64px; color:var(--primary); margin-bottom:24px;">
         <path d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />

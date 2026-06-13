@@ -582,6 +582,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Check for Secure Context / Web Crypto API support
+  if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
+    const warningBanner = document.getElementById('secureContextWarning');
+    if (warningBanner) {
+      warningBanner.classList.remove('hidden');
+    }
+  }
+
   // Keyboard shortcut: Enter to process when not in textarea
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -1140,21 +1148,36 @@ function toggleStegoInput() {
 
 // Decoy Vault / Master Authentication
 let isDecoyVault = false;
-function authMaster() {
-  const pwd = document.getElementById('masterPassword').value;
+
+// Convert plaintext to SHA-256 Hash
+async function getSHA256Hash(text) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function authMaster() {
+  const pwd = (document.getElementById('masterPassword').value || '').trim().toLowerCase();
   const err = document.getElementById('masterAuthError');
   if (!pwd) {
     err.style.display = 'block';
     return;
   }
+  // Wait for the hash computation
+  const pwdHash = await getSHA256Hash(pwd);
+
+  // 'decoy' hash: 43c7bda7482f5b451cff721a329cd5dbb8a0ce51152a55de0df30b5364175de8
+  // 'admin' hash: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
   
-  if (pwd === 'decoy') {
+  if (pwdHash === '43c7bda7482f5b451cff721a329cd5dbb8a0ce51152a55de0df30b5364175de8') {
     // Load Plausible Deniability State
     isDecoyVault = true;
     document.getElementById('masterLoginOverlay').classList.remove('open');
     populateDecoyVault();
     generateMockCase('Decoy Vault Accessed', 'Low', 'Active');
-  } else if (pwd === 'admin') {
+  } else if (pwdHash === '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918') {
     // Normal Secure State
     isDecoyVault = false;
     document.getElementById('masterLoginOverlay').classList.remove('open');
