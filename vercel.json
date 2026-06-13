@@ -1,6 +1,4 @@
 {
-  "version": 2,
-  "name": "securevault",
   "cleanUrls": true,
   "headers": [
     {
@@ -23,26 +21,24 @@
           "value": "strict-origin-when-cross-origin"
         }
       ]
-    }
-  ],
-  "routes": [
-    {
-      "src": "/sw.js",
-      "dest": "/sw.js",
-      "headers": {
-        "cache-control": "public, max-age=0, must-revalidate"
-      }
     },
     {
-      "src": "/manifest.json",
-      "dest": "/manifest.json",
-      "headers": {
-        "cache-control": "public, max-age=0, must-revalidate"
-      }
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     },
     {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     }
   ]
 }
