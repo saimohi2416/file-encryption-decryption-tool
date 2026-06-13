@@ -1,0 +1,29 @@
+{
+  "name": "securevault-file-encryption",
+  "version": "1.0.0",
+  "description": "SecureVault - File Encryption & Decryption Tool with AES-256-GCM",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saimohi2416/file-encryption-decryption-tool.git"
+  },
+  "keywords": [
+    "encryption",
+    "decryption",
+    "aes-256",
+    "security",
+    "file-encryption"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/saimohi2416/file-encryption-decryption-tool/issues"
+  },
+  "homepage": "https://github.com/saimohi2416/file-encryption-decryption-tool#readme",
+  "dependencies": {
+    "@vercel/speed-insights": "^2.0.0"
+  }
+}
