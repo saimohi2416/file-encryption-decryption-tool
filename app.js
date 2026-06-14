@@ -65,37 +65,209 @@ const state = {
 
 // ── IndexedDB Configuration ──────────────────────────────────────────────────
 
+function hexToBuf(hex) {
+  if (!hex || typeof hex !== 'string') return new ArrayBuffer(0);
+  const view = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < view.length; i++) {
+    view[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return view.buffer;
+}
+
+class MockIDBDatabase {
+  constructor() {
+    this.stores = {
+      users: JSON.parse(localStorage.getItem('mock_db_users') || '{}'),
+      ledger: JSON.parse(localStorage.getItem('mock_db_ledger') || '[]'),
+      virtual_files: JSON.parse(localStorage.getItem('mock_db_virtual_files') || '[]')
+    };
+    this.nextLedgerId = parseInt(localStorage.getItem('mock_db_next_ledger_id') || '1', 10);
+    this.nextFileId = parseInt(localStorage.getItem('mock_db_next_file_id') || '1', 10);
+  }
+
+  saveStore(name) {
+    if (name === 'users') {
+      localStorage.setItem('mock_db_users', JSON.stringify(this.stores.users));
+    } else if (name === 'ledger') {
+      localStorage.setItem('mock_db_ledger', JSON.stringify(this.stores.ledger));
+      localStorage.setItem('mock_db_next_ledger_id', this.nextLedgerId.toString());
+    } else if (name === 'virtual_files') {
+      const serializedFiles = this.stores.virtual_files.map(f => {
+        let serializedContent = f.content;
+        if (f.content instanceof ArrayBuffer) {
+          serializedContent = { __type: 'ArrayBuffer', data: bufToHex(f.content) };
+        } else if (f.content instanceof Uint8Array) {
+          serializedContent = { __type: 'Uint8Array', data: bufToHex(f.content) };
+        }
+        return { ...f, content: serializedContent };
+      });
+      localStorage.setItem('mock_db_virtual_files', JSON.stringify(serializedFiles));
+      localStorage.setItem('mock_db_next_file_id', this.nextFileId.toString());
+    }
+  }
+
+  transaction(storeNames, mode) {
+    const self = this;
+    const tx = {
+      oncomplete: null,
+      onerror: null,
+      objectStore: function(name) {
+        return {
+          get: function(key) {
+            const req = { onsuccess: null, onerror: null };
+            setTimeout(() => {
+              let res;
+              if (name === 'users') {
+                res = self.stores.users[key];
+              } else {
+                res = self.stores[name].find(item => item.id === key);
+              }
+              if (res) {
+                // Return a deep copy to mimic IndexedDB isolating objects
+                res = JSON.parse(JSON.stringify(res));
+                if (res.content && typeof res.content === 'object' && res.content.__type) {
+                  const hex = res.content.data;
+                  const buf = hexToBuf(hex);
+                  res.content = res.content.__type === 'Uint8Array' ? new Uint8Array(buf) : buf;
+                }
+              }
+              req.result = res;
+              if (req.onsuccess) req.onsuccess({ target: { result: res } });
+            }, 0);
+            return req;
+          },
+          add: function(data) {
+            const req = { onsuccess: null, onerror: null };
+            setTimeout(() => {
+              // Deep copy input
+              const copy = JSON.parse(JSON.stringify(data));
+              // Restore ArrayBuffer / Uint8Array content reference (since JSON.stringify drops it)
+              copy.content = data.content;
+
+              if (name === 'users') {
+                self.stores.users[copy.username] = copy;
+              } else if (name === 'ledger') {
+                copy.id = self.nextLedgerId++;
+                self.stores.ledger.push(copy);
+              } else if (name === 'virtual_files') {
+                copy.id = self.nextFileId++;
+                self.stores.virtual_files.push(copy);
+              }
+              self.saveStore(name);
+              req.result = copy.id || copy.username;
+              if (req.onsuccess) req.onsuccess({ target: { result: req.result } });
+              
+              if (!tx._completed) {
+                tx._completed = true;
+                setTimeout(() => {
+                  if (tx.oncomplete) tx.oncomplete();
+                }, 0);
+              }
+            }, 0);
+            return req;
+          },
+          put: function(data) {
+            return this.add(data);
+          },
+          openCursor: function() {
+            const req = { onsuccess: null, onerror: null };
+            setTimeout(() => {
+              let items = [];
+              if (name === 'users') {
+                items = Object.values(self.stores.users);
+              } else {
+                items = self.stores[name];
+              }
+              
+              items = items.map(item => {
+                let deserialized = JSON.parse(JSON.stringify(item));
+                if (item.content) {
+                  deserialized.content = item.content;
+                }
+                if (deserialized.content && typeof deserialized.content === 'object' && deserialized.content.__type) {
+                  const hex = deserialized.content.data;
+                  const buf = hexToBuf(hex);
+                  deserialized.content = deserialized.content.__type === 'Uint8Array' ? new Uint8Array(buf) : buf;
+                }
+                return deserialized;
+              });
+
+              let index = 0;
+              function fireNext() {
+                if (index < items.length) {
+                  const cursor = {
+                    value: items[index],
+                    key: items[index].id || items[index].username,
+                    continue: function() {
+                      index++;
+                      setTimeout(fireNext, 0);
+                    },
+                    delete: function() {
+                      if (name === 'users') {
+                        delete self.stores.users[items[index].username];
+                      } else {
+                        const targetId = items[index].id;
+                        self.stores[name] = self.stores[name].filter(item => item.id !== targetId);
+                      }
+                      self.saveStore(name);
+                    }
+                  };
+                  if (req.onsuccess) req.onsuccess({ target: { result: cursor } });
+                } else {
+                  if (req.onsuccess) req.onsuccess({ target: { result: null } });
+                }
+              }
+              fireNext();
+            }, 0);
+            return req;
+          }
+        };
+      }
+    };
+    return tx;
+  }
+}
+
 function initDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('securevault_db', 1);
-
-    request.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      
-      // Users object store
-      if (!db.objectStoreNames.contains('users')) {
-        db.createObjectStore('users', { keyPath: 'username' });
+  return new Promise((resolve) => {
+    try {
+      if (!window.indexedDB) {
+        console.warn("IndexedDB is not supported on this browser. Falling back to LocalStorage.");
+        resolve(new MockIDBDatabase());
+        return;
       }
       
-      // Ledger / Transaction logs store
-      if (!db.objectStoreNames.contains('ledger')) {
-        db.createObjectStore('ledger', { keyPath: 'id', autoIncrement: true });
-      }
-      
-      // User Virtual Filesystem store
-      if (!db.objectStoreNames.contains('virtual_files')) {
-        db.createObjectStore('virtual_files', { keyPath: 'id', autoIncrement: true });
-      }
-    };
+      const request = indexedDB.open('securevault_db', 1);
 
-    request.onsuccess = (e) => {
-      state.db = e.target.result;
-      resolve(state.db);
-    };
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        
+        if (!db.objectStoreNames.contains('users')) {
+          db.createObjectStore('users', { keyPath: 'username' });
+        }
+        
+        if (!db.objectStoreNames.contains('ledger')) {
+          db.createObjectStore('ledger', { keyPath: 'id', autoIncrement: true });
+        }
+        
+        if (!db.objectStoreNames.contains('virtual_files')) {
+          db.createObjectStore('virtual_files', { keyPath: 'id', autoIncrement: true });
+        }
+      };
 
-    request.onerror = (e) => {
-      reject(e.target.error);
-    };
+      request.onsuccess = (e) => {
+        state.db = e.target.result;
+        resolve(state.db);
+      };
+
+      request.onerror = (e) => {
+        console.warn("IndexedDB open failed (possibly WebView or private mode). Falling back to LocalStorage.", e.target.error);
+        resolve(new MockIDBDatabase());
+      };
+    } catch (err) {
+      console.warn("IndexedDB initialization threw error. Falling back to LocalStorage.", err);
+      resolve(new MockIDBDatabase());
+    }
   });
 }
 
