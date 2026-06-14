@@ -1800,11 +1800,18 @@ function generateMockCase(type = null, severity = null, status = null) {
   }
 }
 
+let copilotHistory = [
+  {
+    role: 'system',
+    content: "You are SecureVault's AI Security Copilot. You are an expert cryptographer and cybersecurity analyst. You help users analyze files, detect anomalies, and understand cryptographic details of SecureVault. Keep your answers brief, professional, and technically precise."
+  }
+];
+
 function handleAiKey(e) {
   if (e.key === 'Enter') sendAiMessage();
 }
 
-function sendAiMessage() {
+async function sendAiMessage() {
   const input = document.getElementById('aiInput');
   const text = input.value.trim();
   if (!text) return;
@@ -1818,13 +1825,52 @@ function sendAiMessage() {
   chat.appendChild(userMsg);
   chat.scrollTop = chat.scrollHeight;
 
-  setTimeout(() => {
+  copilotHistory.push({ role: 'user', content: text });
+
+  const typingMsg = document.createElement('div');
+  typingMsg.className = 'ai-msg ai-sys';
+  typingMsg.id = 'copilot-typing';
+  typingMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble" style="display:flex; gap:4px; align-items:center; padding:4px 8px;"><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#94a3b8; border-radius:50%; -webkit-animation-delay:-0.32s; animation-delay:-0.32s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#94a3b8; border-radius:50%; -webkit-animation-delay:-0.16s; animation-delay:-0.16s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#94a3b8; border-radius:50%;"></span></div>`;
+  chat.appendChild(typingMsg);
+  chat.scrollTop = chat.scrollHeight;
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messages: copilotHistory
+      })
+    });
+
+    typingMsg.remove();
+
+    if (!response.ok) {
+      throw new Error('API error: ' + response.status);
+    }
+
+    const data = await response.json();
+    const replyText = data.choices?.[0]?.message?.content || 'Error generating AI response.';
+    
+    copilotHistory.push({ role: 'assistant', content: replyText });
+
     const sysMsg = document.createElement('div');
     sysMsg.className = 'ai-msg ai-sys';
-    sysMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">Analyzing context and checking cryptographic parameters...<br><br>The client-side profiles are fully active in IndexedDB. I have locked your active session with SHA-256 password digests and isolated all transactional records. Let me know if you want to inspect specific file systems!</div>`;
+    const parsedText = window.parseChatMarkdown ? window.parseChatMarkdown(replyText) : replyText;
+    sysMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">${parsedText}</div>`;
     chat.appendChild(sysMsg);
     chat.scrollTop = chat.scrollHeight;
-  }, 1000);
+  } catch (error) {
+    typingMsg.remove();
+    const errorMsg = document.createElement('div');
+    errorMsg.className = 'ai-msg ai-sys';
+    errorMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">⚠️ <strong>Error connecting to AI Copilot</strong>: ${error.message}</div>`;
+    chat.appendChild(errorMsg);
+    chat.scrollTop = chat.scrollHeight;
+    console.error('AI Security Copilot Error:', error);
+  }
 }
 
 // Steganography Toggle
