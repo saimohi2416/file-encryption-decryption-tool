@@ -103,6 +103,19 @@
           AI Security Copilot
         </a>
       </nav>
+      <div class="user-display-card hidden" id="userDisplayCard" style="margin-top: auto;">
+        <div class="user-display-avatar" id="userAvatar">U</div>
+        <div class="user-display-info">
+          <div class="user-display-name" id="userNameDisplay">Username</div>
+          <div class="user-display-status">Active Session</div>
+        </div>
+      </div>
+      <div class="logout-btn-wrap hidden" id="logoutBtnWrap">
+        <button class="logout-btn" onclick="logoutUser()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </button>
+      </div>
       <div class="sidebar-footer">
         <div class="status-indicator">
           <span class="pulse-dot" style="background:var(--accent);"></span> System Secured
@@ -280,33 +293,42 @@
           Step 1 — Select File
         </label>
 
+        <div class="key-tabs" style="margin-top: 12px; margin-bottom: 12px;" id="fileModeTabs">
+          <button class="key-tab-btn active" id="fileMode-single" onclick="switchFileMode('single')">Single File</button>
+          <button class="key-tab-btn" id="fileMode-batch" onclick="switchFileMode('batch')">Batch / Folder (Zip)</button>
+        </div>
+
         <!-- File Selected State (shown after picking) -->
-        <div class="file-selected-bar hidden" id="fileSelected">
-          <div class="file-icon-wrap">
-            <svg viewBox="0 0 48 48" fill="none">
-              <path d="M28 4H12C9.8 4 8 5.8 8 8v32c0 2.2 1.8 4 4 4h24c2.2 0 4-1.8 4-4V16L28 4z"
-                fill="rgba(99,102,241,0.15)" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-              <path d="M28 4v12h12" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-            </svg>
+        <div class="file-selected-bar hidden" id="fileSelected" style="flex-wrap: wrap; gap: 12px;">
+          <div style="display:flex; align-items:center; gap:12px; width:100%; flex: 1;">
+            <div class="file-icon-wrap">
+              <svg viewBox="0 0 48 48" fill="none">
+                <path d="M28 4H12C9.8 4 8 5.8 8 8v32c0 2.2 1.8 4 4 4h24c2.2 0 4-1.8 4-4V16L28 4z"
+                  fill="rgba(99,102,241,0.15)" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                <path d="M28 4v12h12" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+              </svg>
+            </div>
+            <div class="file-info" style="flex:1;">
+              <div class="file-name" id="fileName">filename.txt</div>
+              <div class="file-meta" id="fileMeta">0 KB · text/plain</div>
+            </div>
+            <button class="file-change-btn" onclick="openFolderWindow()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              Change
+            </button>
+            <button class="file-remove" id="fileRemoveBtn" onclick="removeFile(event)">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
           </div>
-          <div class="file-info">
-            <div class="file-name" id="fileName">filename.txt</div>
-            <div class="file-meta" id="fileMeta">0 KB · text/plain</div>
-          </div>
-          <button class="file-change-btn" onclick="openFolderWindow()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Change
-          </button>
-          <button class="file-remove" id="fileRemoveBtn" onclick="removeFile(event)">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
-          </button>
+          
+          <div id="batchFilesList" class="batch-files-list hidden" style="width: 100%;"></div>
         </div>
 
         <!-- Windows Folder Window Trigger -->
@@ -397,57 +419,130 @@
             </button>
           </div>
         </div>
-        <input type="file" id="fileInput" class="hidden-input" onchange="handleFileSelect(event)" />
+        <input type="file" id="fileInput" class="hidden-input" multiple onchange="handleFileSelect(event)" />
+        <input type="file" id="folderInput" class="hidden-input" webkitdirectory directory multiple onchange="handleFolderSelect(event)" />
       </div>
 
-      <!-- Password Section -->
+      <!-- Password / Credentials Section -->
       <div class="card-section">
-        <label class="section-label" for="passwordInput">
+        <label class="section-label" for="passwordInput" id="step2Label">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
-          Step 2 — Encryption Password
+          Step 2 — Encryption Credentials
         </label>
-        <div class="password-wrap">
-          <form class="password-field-wrap" onsubmit="return false;">
-            <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true" />
-            <input type="password" id="passwordInput" class="password-input" placeholder="Enter a strong password..."
-              oninput="updatePasswordStrength()" autocomplete="new-password" />
-            <button type="button" class="toggle-pass" id="togglePassBtn" onclick="togglePassword()"
-              title="Toggle visibility">
-              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2" />
-                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
-              </svg>
-            </button>
-          </form>
-          <!-- Strength Bar -->
-          <div class="strength-container" id="strengthContainer">
-            <div class="strength-bar">
-              <div class="strength-fill" id="strengthFill"></div>
+
+        <!-- Metadata Preview Banner (Decryption only) -->
+        <div id="metadataPreviewCard" class="metadata-card hidden">
+          <h4 style="font-size:12px; font-weight:800; color:var(--primary-light); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em;">📂 Detected File Metadata</h4>
+          <div class="metadata-grid">
+            <div class="metadata-item">
+              <div class="metadata-label">Format Version</div>
+              <div class="metadata-val" id="metaVersion">-</div>
             </div>
-            <span class="strength-label" id="strengthLabel">Enter password</span>
-          </div>
-          <!-- Password Requirements -->
-          <div class="pass-reqs" id="passReqs">
-            <div class="req-item" id="req-len"><span class="req-dot"></span>At least 8 characters</div>
-            <div class="req-item" id="req-upper"><span class="req-dot"></span>Uppercase letter</div>
-            <div class="req-item" id="req-num"><span class="req-dot"></span>Number</div>
-            <div class="req-item" id="req-sym"><span class="req-dot"></span>Special symbol</div>
+            <div class="metadata-item">
+              <div class="metadata-label">Mode / Type</div>
+              <div class="metadata-val" id="metaType">-</div>
+            </div>
+            <div class="metadata-item">
+              <div class="metadata-label">PBKDF2 Salt</div>
+              <div class="metadata-val" id="metaSalt">-</div>
+            </div>
+            <div class="metadata-item">
+              <div class="metadata-label">Initialization Vector (IV)</div>
+              <div class="metadata-val" id="metaIv">-</div>
+            </div>
+            <div class="metadata-item" style="grid-column: span 2;">
+              <div class="metadata-label">Original SHA-256 Hash</div>
+              <div class="metadata-val" id="metaHash">-</div>
+            </div>
           </div>
         </div>
 
-        <!-- Confirm Password (Encrypt only) -->
-        <div class="confirm-wrap" id="confirmWrap">
-          <label class="section-label-sm" for="confirmInput">Confirm Password</label>
-          <form class="password-field-wrap" onsubmit="return false;">
-            <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true" />
-            <input type="password" id="confirmInput" class="password-input"
-              placeholder="Re-enter password to confirm..." oninput="checkConfirm()" autocomplete="new-password" />
-            <div class="confirm-indicator" id="confirmIndicator"></div>
-          </form>
-          <p class="confirm-msg hidden" id="confirmMsg">⚠ Passwords do not match</p>
+        <div class="key-tabs" style="margin-bottom: 16px;">
+          <button class="key-tab-btn active" id="keyType-symmetric" onclick="switchKeyType('symmetric')">Symmetric (Password)</button>
+          <button class="key-tab-btn" id="keyType-asymmetric" onclick="switchKeyType('asymmetric')">Asymmetric (RSA Keypair)</button>
+        </div>
+
+        <!-- Symmetric Password UI -->
+        <div id="symmetricFields">
+          <div class="password-wrap">
+            <form class="password-field-wrap" onsubmit="return false;">
+              <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true" />
+              <input type="password" id="passwordInput" class="password-input" placeholder="Enter a strong password..."
+                oninput="updatePasswordStrength()" autocomplete="new-password" />
+              <button type="button" class="toggle-pass" id="togglePassBtn" onclick="togglePassword()"
+                title="Toggle visibility">
+                <svg id="eyeIcon" viewBox="0 0 24 24" fill="none">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2" />
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+                </svg>
+              </button>
+            </form>
+            <!-- Strength Bar -->
+            <div class="strength-container" id="strengthContainer">
+              <div class="strength-bar">
+                <div class="strength-fill" id="strengthFill"></div>
+              </div>
+              <span class="strength-label" id="strengthLabel">Enter password</span>
+            </div>
+            <!-- Password Requirements -->
+            <div class="pass-reqs" id="passReqs">
+              <div class="req-item" id="req-len"><span class="req-dot"></span>At least 8 characters</div>
+              <div class="req-item" id="req-upper"><span class="req-dot"></span>Uppercase letter</div>
+              <div class="req-item" id="req-num"><span class="req-dot"></span>Number</div>
+              <div class="req-item" id="req-sym"><span class="req-dot"></span>Special symbol</div>
+            </div>
+            
+            <div style="display:flex; gap:12px; margin-top:12px;">
+              <button type="button" class="passphrase-generator-btn" onclick="generateSecurePassphrase()">🔑 Generate Passphrase</button>
+              <button type="button" class="passphrase-generator-btn" style="background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.25); color:var(--success);" onclick="showPassphraseQrCode()">📱 Show QR Code</button>
+            </div>
+          </div>
+
+          <!-- Confirm Password (Encrypt only) -->
+          <div class="confirm-wrap" id="confirmWrap" style="margin-top:16px;">
+            <label class="section-label-sm" style="display:block; margin-bottom:6px;" for="confirmInput">Confirm Password</label>
+            <form class="password-field-wrap" onsubmit="return false;">
+              <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true" />
+              <input type="password" id="confirmInput" class="password-input"
+                placeholder="Re-enter password to confirm..." oninput="checkConfirm()" autocomplete="new-password" />
+              <div class="confirm-indicator" id="confirmIndicator"></div>
+            </form>
+            <p class="confirm-msg hidden" id="confirmMsg">⚠ Passwords do not match</p>
+          </div>
+
+          <!-- 2FA & Streaming Options -->
+          <div style="display:flex; flex-direction:column; gap:12px; margin-top:20px; border-top: 1px solid var(--border); padding-top:16px;">
+            <label style="display:flex; gap:8px; font-size:13px; color:var(--text); cursor:pointer; align-items:center;">
+              <input type="checkbox" id="chk2FA" onchange="toggle2FAInput()"> Enable 2-Factor Key File (2FA)
+            </label>
+            <div id="keyFileInputArea" class="hidden" style="padding-left:24px;">
+              <input type="file" id="keyFileInput" style="font-size:12px; color:var(--text-muted);" onchange="handleKeyFileSelect(event)" />
+              <p style="font-size:11px; color:var(--text-subtle); margin-top:4px;">Upload any file as your second factor. You will need the exact same file to decrypt.</p>
+            </div>
+            <label style="display:flex; gap:8px; font-size:13px; color:var(--text); cursor:pointer; align-items:center;">
+              <input type="checkbox" id="chkStreaming"> Enable Chunked Streaming (for Large Files)
+            </label>
+          </div>
+        </div>
+
+        <!-- Asymmetric RSA UI -->
+        <div id="asymmetricFields" class="hidden">
+          <div id="asymmetricEncryptFields">
+            <label class="section-label-sm" style="display:block; margin-bottom:6px;">Recipient Public Key (PEM)</label>
+            <textarea id="recipientPublicKey" class="key-textarea" placeholder="Paste -----BEGIN PUBLIC KEY----- ... -----END PUBLIC KEY-----"></textarea>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">Paste the recipient's public key to encrypt the file so only they can decrypt it.</div>
+          </div>
+          <div id="asymmetricDecryptFields" class="hidden">
+            <label class="section-label-sm" style="display:block; margin-bottom:6px;">Your Private Key (PEM)</label>
+            <textarea id="recipientPrivateKey" class="key-textarea" placeholder="Paste -----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----"></textarea>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">Paste your private key to decrypt this asymmetric file.</div>
+          </div>
+          <div class="key-action-row">
+            <button type="button" class="passphrase-generator-btn" onclick="generateAsymmetricKeys()">⚙ Generate RSA Keypair</button>
+          </div>
         </div>
 
         <!-- Advanced Security Options -->
@@ -748,10 +843,13 @@
 
     <div class="main-card mt-24">
       <div class="card-section">
-        <div class="section-flex" style="justify-content: space-between;">
+        <div class="section-flex" style="justify-content: space-between; align-items: center;">
           <label class="section-label mb-0">Ledger Records</label>
-          <div class="header-badge" style="background: rgba(16,185,129,0.1); border-color: var(--success); color: var(--success);">
-            <span class="badge-dot" style="background: var(--success);"></span> Ledger Active
+          <div style="display:flex; gap:12px; align-items:center;">
+            <button class="action-btn-sm" style="background: rgba(255, 80, 80, 0.15); border: 1px solid rgba(255, 80, 80, 0.3); color: var(--danger); font-size:11px;" onclick="clearLedgerHistory()">Clear Ledger</button>
+            <div class="header-badge" style="background: rgba(16,185,129,0.1); border-color: var(--success); color: var(--success); margin: 0;">
+              <span class="badge-dot" style="background: var(--success);"></span> Ledger Active
+            </div>
           </div>
         </div>
         <div class="data-table-wrap mt-16">
@@ -1013,18 +1111,40 @@
   </div>
   <!-- ══════════════ END FOLDER WINDOW ══════════════ -->
 
-  <!-- Decoy Vault Login Overlay -->
+  <!-- Multi-User Authentication Overlay -->
   <div class="fw-overlay" id="masterLoginOverlay" style="z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #050505;">
-    <div style="max-width:400px; width:100%; text-align:center;">
-      <svg viewBox="0 0 24 24" fill="none" style="width:64px; height:64px; color:var(--primary); margin-bottom:24px;">
-        <path d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-        <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-      <h2 style="margin-bottom:8px; font-weight:800;">Enterprise Authentication</h2>
-      <p style="color:var(--text-muted); margin-bottom:24px; font-size:14px;">Enter Master Password to mount secure volume.</p>
-      <input type="password" id="masterPassword" class="password-input" placeholder="Password..." style="margin-bottom:16px; width:100%;" onkeypress="if(event.key==='Enter') authMaster()" autocomplete="off" />
-      <button class="open-folder-btn" style="width:100%; justify-content:center;" onclick="authMaster()">Unlock Volume</button>
-      <p id="masterAuthError" style="color:var(--danger); font-size:12px; margin-top:12px; display:none;">Incorrect password</p>
+    <div class="auth-panel-wrap">
+      <div style="text-align:center; margin-bottom:24px;">
+        <svg viewBox="0 0 24 24" fill="none" style="width:48px; height:48px; color:var(--primary); margin-bottom:12px;">
+          <path d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+          <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <h2 style="font-weight:800; font-size:22px; color:var(--text); margin-bottom: 4px;">SecureVault Access</h2>
+        <p style="color:var(--text-muted); font-size:13px;">100% client-side multi-user dashboard</p>
+      </div>
+      
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="authTab-signin" onclick="switchAuthTab('signin')">Sign In</button>
+        <button class="auth-tab-btn" id="authTab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div>
+          <label class="section-label-sm" style="margin-bottom:6px; display:block;">Username</label>
+          <input type="text" id="authUsername" class="password-input" placeholder="Enter username..." style="width:100%;" autocomplete="off" />
+        </div>
+        <div>
+          <label class="section-label-sm" style="margin-bottom:6px; display:block;">Password</label>
+          <input type="password" id="authPassword" class="password-input" placeholder="Enter password..." style="width:100%;" onkeypress="if(event.key==='Enter') handleAuthentication()" autocomplete="off" />
+        </div>
+        <div class="confirm-wrap hidden" id="authConfirmWrap" style="margin-top:0;">
+          <label class="section-label-sm" style="margin-bottom:6px; display:block;">Confirm Password</label>
+          <input type="password" id="authConfirmPassword" class="password-input" placeholder="Confirm password..." style="width:100%;" onkeypress="if(event.key==='Enter') handleAuthentication()" autocomplete="off" />
+        </div>
+        
+        <button class="open-folder-btn" style="width:100%; justify-content:center; margin-top:8px;" onclick="handleAuthentication()" id="authSubmitBtn">Sign In</button>
+        <p id="authErrorMsg" style="color:var(--danger); font-size:12px; margin-top:4px; text-align:center;" class="hidden"></p>
+      </div>
     </div>
   </div>
 
@@ -1042,6 +1162,21 @@
     </div>
   </div>
 
+  <!-- QR Code Modal -->
+  <div class="modal-overlay" id="qrModal">
+    <div class="modal-card">
+      <h3 style="font-size:18px; font-weight:800; color:var(--text); margin-bottom:8px;">Passphrase QR Code</h3>
+      <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">Scan this QR code with another device to transfer your secure passphrase.</p>
+      <div class="qr-canvas-wrap">
+        <canvas id="qrCanvas"></canvas>
+      </div>
+      <div style="font-family:monospace; font-size:12px; word-break:break-all; padding:12px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:var(--radius); margin-top:8px; color:var(--primary-light);" id="qrText"></div>
+      <button class="modal-close-btn" onclick="closeQrModal()">Dismiss</button>
+    </div>
+  </div>
+
+  <script src="jszip.min.js"></script>
+  <script src="qrious.min.js"></script>
   <script src="crypto.js"></script>
   <script src="app.js"></script>
 </body>

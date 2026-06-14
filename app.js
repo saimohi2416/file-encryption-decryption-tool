@@ -1,91 +1,292 @@
 /**
  * SecureVault — Application Logic
- * Handles UI, state, and orchestrates crypto operations
+ * Handles UI, state, IndexedDB profiles, and orchestrates crypto/batch operations
  */
 
 "use strict";
 
+// ── Word Dictionary for Passphrase Generator ───────────────────────────────
+const WORD_LIST = [
+  "cyber", "vault", "secure", "crypto", "quantum", "matrix", "shield", "carbon",
+  "silicon", "network", "node", "nexus", "pulse", "beacon", "vector", "binary",
+  "cipher", "plasma", "galaxy", "orbit", "comet", "nebula", "stellar", "aurora",
+  "vortex", "shadow", "ghost", "phantom", "specter", "wraith", "blade", "laser",
+  "photon", "electron", "proton", "neutron", "atom", "molecule", "quartz", "crystal",
+  "diamond", "sapphire", "emerald", "ruby", "gold", "silver", "bronze", "copper",
+  "iron", "steel", "cobalt", "nickel", "titanium", "helium", "neon", "argon",
+  "krypton", "xenon", "radon", "sodium", "potassium", "calcium", "silica", "basalt",
+  "granite", "marble", "ocean", "river", "glacier", "canyon", "desert", "forest",
+  "jungle", "tundra", "meadow", "savanna", "monsoon", "typhoon", "cyclone", "hurricane",
+  "tornado", "blizzard", "thunder", "lightning", "eclipse", "solstice", "equinox", "horizon",
+  "zenith", "nadir", "apex", "vertex", "summit", "abyss", "chasm", "fissure",
+  "trench", "rift", "crater", "caldera", "geyser", "oasis", "mirage", "dune",
+  "glade", "grove", "delta", "estuary", "lagoon", "reef", "atoll", "archipelago",
+  "peninsula", "isthmus", "strait", "channel", "cove", "fjord", "iceberg", "steppe",
+  "plateau", "mesa", "butte", "ravine", "gorge", "pass", "ridge", "peak",
+  "dome", "spire", "obelisk", "monolith", "dolmen", "cairn", "pillar", "column",
+  "arch", "turret", "tower", "castle", "fortress", "citadel", "bastion", "rampart",
+  "moat", "bridge", "gate", "portal", "threshold", "corridor", "gallery", "chamber",
+  "crypt", "catacomb", "labyrinth", "maze", "grid", "mesh", "web", "lattice",
+  "array", "tensor", "scalar", "spiral", "helix", "whirlpool", "tempest", "gale",
+  "zephyr", "breeze", "mist", "fog", "haze", "vapor", "steam", "cloud",
+  "cumulus", "stratus", "cirrus", "nimbus", "rain", "shower", "drizzle", "storm",
+  "bolt", "flash", "spark", "ember", "flame", "blaze", "fire", "smoke",
+  "ash", "dust", "sand", "soil", "clay", "mud", "rock", "stone",
+  "pebble", "gravel", "silt", "loam", "peat", "coal", "amber", "fossil",
+  "relic", "token", "token", "symbol", "sign", "signal", "flare", "lantern",
+  "torch", "candle", "lamp", "beam", "ray", "glow", "gleam", "glimmer",
+  "shimmer", "sparkle", "glitter", "sheen", "luster", "gloss", "finish", "texture",
+  "pattern", "design", "motif", "theme", "style", "mode", "phase", "state",
+  "status", "stage", "step", "pace", "stride", "march", "journey", "voyage",
+  "flight", "trajectory", "path", "route", "track", "trail", "course", "drift",
+  "tide", "current", "flow", "stream", "brook", "creek", "spring", "fountain",
+  "well", "source", "origin", "beginning", "start", "launch", "initiation", "creation",
+  "genesis", "birth", "dawn", "sunrise", "morning", "noon", "afternoon", "dusk",
+  "sunset", "evening", "night", "midnight", "twilight", "gloaming", "darkness", "shade",
+  "canopy", "ceiling", "roof", "rafter", "post", "foundation", "base", "pedestal",
+  "plinth", "platform", "dais", "theater", "arena", "stadium", "zone", "sector"
+];
+
 // ── State ────────────────────────────────────────────────────────────────────
 
 const state = {
-  mode: 'encrypt',   // 'encrypt' | 'decrypt'
-  selectedFile: null,        // File object
-  resultBlob: null,        // Blob of processed output
-  outputName: '',          // Output filename
-  processing: false
+  mode: 'encrypt',           // 'encrypt' | 'decrypt'
+  fileMode: 'single',        // 'single' | 'batch'
+  keyType: 'symmetric',      // 'symmetric' | 'asymmetric'
+  selectedFile: null,        // Single File object
+  batchFiles: [],            // Array of File objects (batch mode)
+  resultBlob: null,          // Blob of processed output
+  outputName: '',            // Output filename
+  processing: false,
+  currentUser: null,         // Logged-in username
+  keyFileHash: null,         // ArrayBuffer of keyfile hash
+  db: null                   // IndexedDB instance
 };
 
-// ── Mode Switching ────────────────────────────────────────────────────────────
+// ── IndexedDB Configuration ──────────────────────────────────────────────────
 
-function switchMode(mode) {
-  if (state.processing) return;
-  state.mode = mode;
+function initDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('securevault_db', 1);
 
-  const encBtn = document.getElementById('encryptModeBtn');
-  const decBtn = document.getElementById('decryptModeBtn');
-  const slider = document.getElementById('modeSlider');
-  const confirmW = document.getElementById('confirmWrap');
-  const btnText = document.getElementById('btnText');
-  const btnIcon = document.getElementById('btnIcon');
-  const stepName3 = document.getElementById('stepName3');
-  const stepName4 = document.getElementById('stepName4');
-  const stepDesc4 = document.getElementById('stepDesc4');
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      
+      // Users object store
+      if (!db.objectStoreNames.contains('users')) {
+        db.createObjectStore('users', { keyPath: 'username' });
+      }
+      
+      // Ledger / Transaction logs store
+      if (!db.objectStoreNames.contains('ledger')) {
+        db.createObjectStore('ledger', { keyPath: 'id', autoIncrement: true });
+      }
+      
+      // User Virtual Filesystem store
+      if (!db.objectStoreNames.contains('virtual_files')) {
+        db.createObjectStore('virtual_files', { keyPath: 'id', autoIncrement: true });
+      }
+    };
 
-  if (mode === 'encrypt') {
-    encBtn.classList.add('active');
-    decBtn.classList.remove('active');
-    slider.classList.remove('right');
-    confirmW.classList.remove('hidden');
-    btnText.textContent = 'Encrypt File';
-    btnIcon.innerHTML = `<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`;
-    stepName3.textContent = 'Key Derivation';
-    stepName4.textContent = 'AES-256-GCM Encrypt';
-    stepDesc4.textContent = 'Encrypt file data';
+    request.onsuccess = (e) => {
+      state.db = e.target.result;
+      resolve(state.db);
+    };
+
+    request.onerror = (e) => {
+      reject(e.target.error);
+    };
+  });
+}
+
+// ── Authentication System ────────────────────────────────────────────────────
+
+let currentAuthTab = 'signin';
+
+function switchAuthTab(tab) {
+  currentAuthTab = tab;
+  const btnSignin = document.getElementById('authTab-signin');
+  const btnSignup = document.getElementById('authTab-signup');
+  const confirmWrap = document.getElementById('authConfirmWrap');
+  const submitBtn = document.getElementById('authSubmitBtn');
+  const errEl = document.getElementById('authErrorMsg');
+
+  errEl.classList.add('hidden');
+
+  if (tab === 'signin') {
+    btnSignin.classList.add('active');
+    btnSignup.classList.remove('active');
+    confirmWrap.classList.add('hidden');
+    submitBtn.textContent = 'Sign In';
   } else {
-    decBtn.classList.add('active');
-    encBtn.classList.remove('active');
-    slider.classList.add('right');
-    confirmW.classList.add('hidden');
-    btnText.textContent = 'Decrypt File';
-    btnIcon.innerHTML = `<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`;
-    stepName3.textContent = 'Key Derivation';
-    stepName4.textContent = 'AES-256-GCM Decrypt';
-    stepDesc4.textContent = 'Decrypt & verify auth tag';
+    btnSignup.classList.add('active');
+    btnSignin.classList.remove('active');
+    confirmWrap.classList.remove('hidden');
+    submitBtn.textContent = 'Sign Up';
+  }
+}
+
+async function handleAuthentication() {
+  const username = document.getElementById('authUsername').value.trim().toLowerCase();
+  const password = document.getElementById('authPassword').value;
+  const confirmPassword = document.getElementById('authConfirmPassword').value;
+  const errEl = document.getElementById('authErrorMsg');
+
+  if (!username) {
+    showAuthError('Username is required.');
+    return;
+  }
+  if (!password) {
+    showAuthError('Password is required.');
+    return;
   }
 
-  // Reset steps & result
-  resetSteps();
-  hideResult();
+  const encoder = new TextEncoder();
+  const pwdBuffer = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', pwdBuffer);
+  const passwordHash = bufToHex(hashBuffer);
+
+  const tx = state.db.transaction('users', currentAuthTab === 'signin' ? 'readonly' : 'readwrite');
+  const store = tx.objectStore('users');
+
+  if (currentAuthTab === 'signin') {
+    const getReq = store.get(username);
+    getReq.onsuccess = () => {
+      const user = getReq.result;
+      if (user && user.passwordHash === passwordHash) {
+        loginUser(username);
+      } else {
+        showAuthError('Incorrect username or password.');
+      }
+    };
+    getReq.onerror = () => showAuthError('Authentication error.');
+  } else {
+    // Sign Up
+    if (password !== confirmPassword) {
+      showAuthError('Passwords do not match.');
+      return;
+    }
+    if (password.length < 8) {
+      showAuthError('Password must be at least 8 characters.');
+      return;
+    }
+
+    const checkReq = store.get(username);
+    checkReq.onsuccess = () => {
+      if (checkReq.result) {
+        showAuthError('Username already exists.');
+      } else {
+        const addReq = store.add({ username, passwordHash });
+        addReq.onsuccess = () => {
+          loginUser(username);
+        };
+        addReq.onerror = () => showAuthError('Failed to register user.');
+      }
+    };
+  }
 }
 
-// ── File Handling ─────────────────────────────────────────────────────────────
-
-function handleDragOver(e) {
-  e.preventDefault();
-  document.getElementById('folderTrigger').classList.add('drag-over');
+function showAuthError(msg) {
+  const errEl = document.getElementById('authErrorMsg');
+  errEl.textContent = msg;
+  errEl.classList.remove('hidden');
 }
 
-function handleDragLeave(e) {
-  document.getElementById('folderTrigger').classList.remove('drag-over');
+function loginUser(username) {
+  state.currentUser = username;
+  sessionStorage.setItem('currentUser', username);
+  
+  // Hide Auth screen
+  document.getElementById('masterLoginOverlay').classList.remove('open');
+  document.getElementById('masterLoginOverlay').style.display = 'none';
+
+  // Show user profile in sidebar
+  document.getElementById('userDisplayCard').classList.remove('hidden');
+  document.getElementById('logoutBtnWrap').classList.remove('hidden');
+  document.getElementById('userNameDisplay').textContent = username;
+  document.getElementById('userAvatar').textContent = username.slice(0, 2).toUpperCase();
+
+  addLog(`User session opened: ${username}`, 'success');
+  generateMockCase(`User ${username} Logged In`, 'Low', 'Resolved');
+
+  // Load custom user files & ledger logs
+  fwRenderFiles();
+  initLedgerData();
 }
 
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('folderTrigger').classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) loadFile(file);
+function logoutUser() {
+  state.currentUser = null;
+  sessionStorage.removeItem('currentUser');
+
+  // Show Auth screen
+  document.getElementById('masterLoginOverlay').classList.add('open');
+  document.getElementById('masterLoginOverlay').style.display = 'flex';
+
+  // Hide user info
+  document.getElementById('userDisplayCard').classList.add('hidden');
+  document.getElementById('logoutBtnWrap').classList.add('hidden');
+  
+  // Clear inputs
+  document.getElementById('authUsername').value = '';
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authConfirmPassword').value = '';
+
+  resetAll();
+  addLog('User logged out. Session secured.', 'info');
+}
+
+// ── File Management Toggles & Handlers ───────────────────────────────────────
+
+function switchFileMode(mode) {
+  if (state.processing) return;
+  state.fileMode = mode;
+  
+  const singleBtn = document.getElementById('fileMode-single');
+  const batchBtn = document.getElementById('fileMode-batch');
+  const batchList = document.getElementById('batchFilesList');
+  const openFolderBtn = document.getElementById('openFolderBtn');
+
+  if (mode === 'single') {
+    singleBtn.classList.add('active');
+    batchBtn.classList.remove('active');
+    batchList.classList.add('hidden');
+    openFolderBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /></svg> Open Folder`;
+  } else {
+    batchBtn.classList.add('active');
+    singleBtn.classList.remove('active');
+    batchList.classList.remove('hidden');
+    openFolderBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /></svg> Select Folder`;
+  }
+  removeFile();
 }
 
 function handleFileSelect(e) {
-  const file = e.target.files[0];
-  if (file) loadFile(file);
-  // Reset so same file can be reselected
+  const files = e.target.files;
+  if (files.length > 0) {
+    if (state.fileMode === 'single') {
+      loadFile(files[0]);
+    } else {
+      loadBatchFiles(Array.from(files));
+    }
+  }
+  e.target.value = '';
+}
+
+function handleFolderSelect(e) {
+  const files = e.target.files;
+  if (files.length > 0) {
+    loadBatchFiles(Array.from(files));
+  }
   e.target.value = '';
 }
 
 function loadFile(file) {
-  // Auto-correct mode based on file extension
+  state.selectedFile = file;
+  state.batchFiles = [];
+
+  // Metadata check for .enc files
   const isEncrypted = file.name.toLowerCase().endsWith('.enc');
+  
   if (isEncrypted && state.mode !== 'decrypt') {
     switchMode('decrypt');
     addLog('Auto-switched to Decrypt mode (.enc file detected)', 'info');
@@ -93,8 +294,6 @@ function loadFile(file) {
     switchMode('encrypt');
     addLog('Auto-switched to Encrypt mode (Standard file detected)', 'info');
   }
-
-  state.selectedFile = file;
 
   const folderTrigger = document.getElementById('folderTrigger');
   const fileSelected  = document.getElementById('fileSelected');
@@ -106,33 +305,286 @@ function loadFile(file) {
 
   folderTrigger.classList.add('hidden');
   fileSelected.classList.remove('hidden');
+  document.getElementById('batchFilesList').classList.add('hidden');
 
   markStepDone(1);
   hideResult();
+
+  if (state.mode === 'decrypt') {
+    checkFileMetadata(file);
+  }
+}
+
+function loadBatchFiles(files) {
+  state.selectedFile = null;
+  state.batchFiles = state.batchFiles.concat(files);
+
+  const folderTrigger = document.getElementById('folderTrigger');
+  const fileSelected  = document.getElementById('fileSelected');
+  const fileName      = document.getElementById('fileName');
+  const fileMeta      = document.getElementById('fileMeta');
+
+  fileName.textContent = `Batch of ${state.batchFiles.length} files`;
+  
+  const totalSize = state.batchFiles.reduce((sum, f) => sum + f.size, 0);
+  fileMeta.textContent = `Total Size: ${formatBytes(totalSize)}`;
+
+  folderTrigger.classList.add('hidden');
+  fileSelected.classList.remove('hidden');
+  document.getElementById('batchFilesList').classList.remove('hidden');
+
+  renderBatchFilesList();
+  markStepDone(1);
+  hideResult();
+}
+
+function renderBatchFilesList() {
+  const listEl = document.getElementById('batchFilesList');
+  listEl.innerHTML = '';
+  
+  state.batchFiles.forEach((file, idx) => {
+    const row = document.createElement('div');
+    row.className = 'batch-file-row';
+    
+    // Icon
+    const type = inferType(file);
+    const iconHtml = makeFileSVG(type, 18);
+
+    row.innerHTML = `
+      <div class="batch-file-icon">${iconHtml}</div>
+      <div class="batch-file-name" title="${file.name}">${file.name}</div>
+      <div class="batch-file-size">${formatBytes(file.size)}</div>
+      <button class="batch-file-remove" onclick="removeBatchFile(${idx}, event)">&times;</button>
+    `;
+    listEl.appendChild(row);
+  });
+}
+
+function removeBatchFile(idx, e) {
+  if (e) e.stopPropagation();
+  state.batchFiles.splice(idx, 1);
+  if (state.batchFiles.length === 0) {
+    removeFile();
+  } else {
+    loadBatchFiles([]); // Trigger reload
+  }
 }
 
 function removeFile(e) {
   if (e) e.stopPropagation();
   state.selectedFile = null;
+  state.batchFiles = [];
+  state.keyFileHash = null;
+  if (document.getElementById('keyFileInput')) document.getElementById('keyFileInput').value = '';
 
   const folderTrigger = document.getElementById('folderTrigger');
   const fileSelected  = document.getElementById('fileSelected');
 
   folderTrigger.classList.remove('hidden');
   fileSelected.classList.add('hidden');
+  
+  document.getElementById('metadataPreviewCard').classList.add('hidden');
 
   resetStep(1);
   hideResult();
 }
 
-// ── Password Strength ─────────────────────────────────────────────────────────
+// ── 2FA Key File ─────────────────────────────────────────────────────────────
+
+function toggle2FAInput() {
+  const chk = document.getElementById('chk2FA');
+  const inputArea = document.getElementById('keyFileInputArea');
+  if (chk.checked) {
+    inputArea.classList.remove('hidden');
+  } else {
+    inputArea.classList.add('hidden');
+    state.keyFileHash = null;
+    document.getElementById('keyFileInput').value = '';
+  }
+}
+
+async function handleKeyFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  addLog(`Reading 2FA key file: ${file.name}...`, 'info');
+  const buffer = await file.arrayBuffer();
+  state.keyFileHash = await computeSHA256(buffer);
+  addLog('2FA key file digest calculated successfully.', 'success');
+}
+
+// ── Asymmetric RSA Key Management ────────────────────────────────────────────
+
+function switchKeyType(type) {
+  state.keyType = type;
+  const symBtn = document.getElementById('keyType-symmetric');
+  const asymBtn = document.getElementById('keyType-asymmetric');
+  const symFields = document.getElementById('symmetricFields');
+  const asymFields = document.getElementById('asymmetricFields');
+
+  if (type === 'symmetric') {
+    symBtn.classList.add('active');
+    asymBtn.classList.remove('active');
+    symFields.classList.remove('hidden');
+    asymFields.classList.add('hidden');
+  } else {
+    asymBtn.classList.add('active');
+    symBtn.classList.remove('active');
+    symFields.classList.add('hidden');
+    asymFields.classList.remove('hidden');
+    
+    // Toggle recipient key fields based on encrypt/decrypt mode
+    toggleAsymmetricKeyFields();
+  }
+}
+
+function toggleAsymmetricKeyFields() {
+  const encFields = document.getElementById('asymmetricEncryptFields');
+  const decFields = document.getElementById('asymmetricDecryptFields');
+  if (state.mode === 'encrypt') {
+    encFields.classList.remove('hidden');
+    decFields.classList.add('hidden');
+  } else {
+    decFields.classList.remove('hidden');
+    encFields.classList.add('hidden');
+  }
+}
+
+async function generateAsymmetricKeys() {
+  addLog('Generating secure RSA-2048 keypair client-side. Please wait...', 'info');
+  try {
+    const keys = await generateRSAKeypair();
+    
+    // Prompt download of public key
+    const pubBlob = new Blob([keys.publicKeyPem], { type: 'text/plain' });
+    const pubUrl = URL.createObjectURL(pubBlob);
+    const pubLink = document.createElement('a');
+    pubLink.href = pubUrl;
+    pubLink.download = 'securevault_public_key.pem';
+    pubLink.click();
+    
+    // Prompt download of private key
+    const privBlob = new Blob([keys.privateKeyPem], { type: 'text/plain' });
+    const privUrl = URL.createObjectURL(privBlob);
+    const privLink = document.createElement('a');
+    privLink.href = privUrl;
+    privLink.download = 'securevault_private_key.pem';
+    privLink.click();
+
+    // Populate keyareas
+    document.getElementById('recipientPublicKey').value = keys.publicKeyPem;
+    document.getElementById('recipientPrivateKey').value = keys.privateKeyPem;
+
+    addLog('Asymmetric RSA-2048 keypair generated successfully. PEM keys downloaded.', 'success');
+  } catch (err) {
+    addLog(`Key generation failed: ${err.message}`, 'error');
+  }
+}
+
+// ── Passphrase Generator & QR Code ───────────────────────────────────────────
+
+function generateSecurePassphrase() {
+  const words = [];
+  for (let i = 0; i < 4; i++) {
+    const idx = Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] % WORD_LIST.length);
+    words.push(WORD_LIST[idx]);
+  }
+  const passphrase = words.join('-');
+
+  document.getElementById('passwordInput').value = passphrase;
+  document.getElementById('confirmInput').value = passphrase;
+  
+  // Force show cleartext password temporarily so user can see it
+  const pwInput = document.getElementById('passwordInput');
+  const confInput = document.getElementById('confirmInput');
+  const oldType = pwInput.type;
+  
+  pwInput.type = 'text';
+  confInput.type = 'text';
+  
+  setTimeout(() => {
+    pwInput.type = oldType;
+    confInput.type = oldType;
+  }, 10_000);
+
+  updatePasswordStrength();
+  checkConfirm();
+  addLog('Secure 4-word passphrase generated successfully.', 'success');
+}
+
+function showPassphraseQrCode() {
+  const pwd = document.getElementById('passwordInput').value;
+  if (!pwd) {
+    shakeElement('passwordInput');
+    return;
+  }
+
+  const modal = document.getElementById('qrModal');
+  const textEl = document.getElementById('qrText');
+  textEl.textContent = pwd;
+
+  // Clear canvas
+  const canvas = document.getElementById('qrCanvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+  // Render QR
+  new QRious({
+    element: canvas,
+    value: pwd,
+    size: 200,
+    background: 'white',
+    foreground: 'black',
+    level: 'H'
+  });
+
+  modal.classList.add('open');
+}
+
+function closeQrModal() {
+  document.getElementById('qrModal').classList.remove('open');
+}
+
+// ── Password Strength and Entropy ────────────────────────────────────────────
+
+function calculateEntropy(pwd) {
+  if (!pwd) return { bits: 0, time: 'Instant' };
+  
+  let pool = 0;
+  if (/[a-z]/.test(pwd)) pool += 26;
+  if (/[A-Z]/.test(pwd)) pool += 26;
+  if (/[0-9]/.test(pwd)) pool += 10;
+  if (/[^a-zA-Z0-9]/.test(pwd)) pool += 33;
+
+  const bits = Math.round(pwd.length * Math.log2(pool || 1));
+  
+  // Cracking estimates assuming 10,000 attempts per second (slow due to PBKDF2 iterations)
+  const attemptsPerSec = 10000;
+  const searchSpace = Math.pow(pool, pwd.length);
+  const timeSecs = searchSpace / (2 * attemptsPerSec);
+
+  let timeStr = 'Instant';
+  if (timeSecs >= 31536000 * 1000) {
+    timeStr = 'Centuries';
+  } else if (timeSecs >= 31536000) {
+    timeStr = `${Math.round(timeSecs / 31536000)} years`;
+  } else if (timeSecs >= 86400) {
+    timeStr = `${Math.round(timeSecs / 86400)} days`;
+  } else if (timeSecs >= 3600) {
+    timeStr = `${Math.round(timeSecs / 3600)} hours`;
+  } else if (timeSecs >= 60) {
+    timeStr = `${Math.round(timeSecs / 60)} minutes`;
+  } else if (timeSecs > 0) {
+    timeStr = `${Math.round(timeSecs)} seconds`;
+  }
+
+  return { bits, time: timeStr };
+}
 
 function updatePasswordStrength() {
   const pw = document.getElementById('passwordInput').value;
   const bar = document.getElementById('strengthFill');
   const lbl = document.getElementById('strengthLabel');
 
-  // Check requirements
   const reqs = {
     len: pw.length >= 8,
     upper: /[A-Z]/.test(pw),
@@ -146,16 +598,20 @@ function updatePasswordStrength() {
   updateReq('req-sym', reqs.sym);
 
   const score = Object.values(reqs).filter(Boolean).length;
+  const entropy = calculateEntropy(pw);
 
   bar.className = 'strength-fill';
-  if (pw.length === 0) { lbl.textContent = 'Enter password'; return; }
+  if (pw.length === 0) {
+    lbl.textContent = 'Enter password';
+    resetStep(2);
+    return;
+  }
 
   const levels = ['', 'weak', 'fair', 'good', 'strong'];
   const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
   bar.classList.add(levels[score]);
-  lbl.textContent = labels[score];
+  lbl.textContent = `${labels[score]} (Entropy: ${entropy.bits} bits, Crack time: ~${entropy.time})`;
 
-  // Mark step 2 done when at least "fair"
   if (score >= 2) markStepDone(2);
   else resetStep(2);
 
@@ -197,11 +653,362 @@ function togglePassword() {
   if (confirmInput) confirmInput.type = type;
 }
 
-// ── Steps UI ──────────────────────────────────────────────────────────────────
+// ── Metadata Header Parser ──────────────────────────────────────────────────
 
-function setStepState(n, state) {
-  // state: 'pending' | 'active' | 'processing' | 'done'
+async function checkFileMetadata(file) {
+  try {
+    const slice = file.slice(0, 310);
+    const buffer = await slice.arrayBuffer();
+    const meta = parseEncryptedHeader(buffer);
+    
+    const card = document.getElementById('metadataPreviewCard');
+    if (!meta) {
+      card.classList.add('hidden');
+      return;
+    }
+
+    document.getElementById('metaVersion').textContent = `v${meta.version}`;
+    document.getElementById('metaType').textContent = meta.asymmetric ? 'Asymmetric (RSA)' : 'Symmetric (Password)';
+    document.getElementById('metaSalt').textContent = meta.salt ? `0x${bufToHex(meta.salt.slice(0, 6))}...` : 'N/A';
+    document.getElementById('metaIv').textContent = `0x${bufToHex(meta.iv.slice(0, 6))}...`;
+    document.getElementById('metaHash').textContent = meta.integrityHash ? `0x${bufToHex(meta.integrityHash.slice(0, 16))}...` : 'N/A';
+    
+    card.classList.remove('hidden');
+    addLog(`Parsed file metadata: Format v${meta.version}, ${meta.asymmetric ? 'Asymmetric' : 'Symmetric'} mode.`, 'info');
+  } catch (err) {
+    console.error('Metadata parsing error', err);
+  }
+}
+
+// ── Main Process ─────────────────────────────────────────────────────────────
+
+async function processFile() {
+  if (state.processing) return;
+
+  const file = state.selectedFile;
+  const batchList = state.batchFiles;
+  const password = document.getElementById('passwordInput').value;
+  const confirm = document.getElementById('confirmInput').value;
+  const rsaPubKey = document.getElementById('recipientPublicKey').value;
+  const rsaPrivKey = document.getElementById('recipientPrivateKey').value;
+  
+  const isStreaming = document.getElementById('chkStreaming').checked;
+
+  // Validation
+  if (!file && batchList.length === 0) {
+    shakeElement('dropZone');
+    addLog('No file or folder batch selected', 'error');
+    return;
+  }
+
+  if (state.keyType === 'symmetric') {
+    if (!password) {
+      shakeElement('passwordInput');
+      document.getElementById('passwordInput').focus();
+      return;
+    }
+    if (state.mode === 'encrypt' && password !== confirm) {
+      shakeElement('confirmInput');
+      document.getElementById('confirmMsg').classList.remove('hidden');
+      return;
+    }
+  } else {
+    // Asymmetric
+    if (state.mode === 'encrypt' && !rsaPubKey) {
+      shakeElement('recipientPublicKey');
+      return;
+    }
+    if (state.mode === 'decrypt' && !rsaPrivKey) {
+      shakeElement('recipientPrivateKey');
+      return;
+    }
+  }
+
+  // UI → processing state
+  state.processing = true;
+  setActionBtnState(true);
+  showResultProcessing();
+
+  try {
+    let sourceFile = file;
+
+    // Batch mode: Zip all files in-memory before encrypting
+    if (state.fileMode === 'batch') {
+      addLog(`[ZIP] Compressing ${batchList.length} files with JSZip...`, 'info');
+      const zip = new JSZip();
+      for (const f of batchList) {
+        zip.file(f.name, f);
+      }
+      const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+      sourceFile = new File([zipBuffer], 'secured_batch.zip', { type: 'application/zip' });
+      addLog(`[ZIP] Compression successful. Zipped file size: ${formatBytes(sourceFile.size)}`, 'success');
+    }
+
+    const outputName = getOutputFilename(sourceFile.name, state.mode);
+
+    if (state.mode === 'encrypt') {
+      if (isStreaming) {
+        // Version 3 Streaming
+        markStepProcessing(3);
+        const result = await encryptFileStream(sourceFile, {
+          password,
+          keyFileHash: state.keyFileHash,
+          chunkSize: 1024 * 1024
+        }, (phase, msg) => {
+          if (phase === 'encrypt') {
+            markStepDone(3);
+            markStepProcessing(4);
+          }
+          addLog(`[STREAM] ${msg}`);
+        }, (pct, detail) => {
+          updateProgressBar(pct, detail);
+        });
+
+        markStepDone(3);
+        markStepDone(4);
+        markStepDone(5);
+        
+        state.resultBlob = result.encryptedBlob;
+        state.outputName = outputName;
+        showResultSuccess(outputName, sourceFile.size, result.encryptedBlob.size, result.sha256);
+      } else {
+        // Standard (V2 or V4 Asymmetric)
+        const fileBuffer = await sourceFile.arrayBuffer();
+        markStepProcessing(3);
+        
+        let stepPhase = 'keyDerive';
+        const result = await encryptFile(fileBuffer, {
+          password,
+          keyFileHash: state.keyFileHash,
+          recipientPublicKeyPem: state.keyType === 'asymmetric' ? rsaPubKey : null
+        }, (phase, msg) => {
+          if (phase !== stepPhase) {
+            if (phase === 'encrypt') {
+              markStepDone(3);
+              markStepProcessing(4);
+            }
+            stepPhase = phase;
+          }
+          addLog(`[CRYPT] ${msg}`);
+        });
+
+        markStepDone(3);
+        markStepDone(4);
+        markStepDone(5);
+
+        state.resultBlob = new Blob([result.encrypted], { type: 'application/octet-stream' });
+        state.outputName = outputName;
+        showResultSuccess(outputName, fileBuffer.byteLength, result.encrypted.byteLength, result.sha256);
+      }
+    } else {
+      // Decrypt
+      if (isStreaming || sourceFile.name.toLowerCase().endsWith('.enc')) {
+        // Determine version from header before choosing flow
+        const headSlice = sourceFile.slice(0, 5);
+        const headBuf = await headSlice.arrayBuffer();
+        const headBytes = new Uint8Array(headBuf);
+        const isStreamVer = (headBytes.length >= 5 && headBytes[4] === 3);
+
+        if (isStreamVer) {
+          markStepProcessing(3);
+          const result = await decryptFileStream(sourceFile, {
+            password,
+            keyFileHash: state.keyFileHash
+          }, (phase, msg) => {
+            if (phase === 'decrypt') {
+              markStepDone(3);
+              markStepProcessing(4);
+            }
+            addLog(`[STREAM] ${msg}`);
+          }, (pct, detail) => {
+            updateProgressBar(pct, detail);
+          });
+
+          markStepDone(3);
+          markStepDone(4);
+          markStepDone(5);
+
+          state.resultBlob = result.decryptedBlob;
+          state.outputName = outputName;
+          showResultSuccess(outputName, sourceFile.size, result.decryptedBlob.size, result.sha256);
+          return;
+        }
+      }
+
+      // Standard Decryption
+      const fileBuffer = await sourceFile.arrayBuffer();
+      markStepProcessing(3);
+      let stepPhase = 'validate';
+      
+      const result = await decryptFile(fileBuffer, {
+        password,
+        keyFileHash: state.keyFileHash,
+        recipientPrivateKeyPem: state.keyType === 'asymmetric' ? rsaPrivKey : null
+      }, (phase, msg) => {
+        if (phase === 'decrypt') {
+          markStepDone(3);
+          markStepProcessing(4);
+        }
+        stepPhase = phase;
+        addLog(`[CRYPT] ${msg}`);
+      });
+
+      markStepDone(3);
+      markStepDone(4);
+      markStepDone(5);
+
+      state.resultBlob = new Blob([result.decrypted], { type: 'application/octet-stream' });
+      state.outputName = outputName;
+      showResultSuccess(outputName, fileBuffer.byteLength, result.decrypted.byteLength, result.sha256);
+    }
+
+  } catch (err) {
+    showResultError(err.message || 'Unknown error');
+    resetStepsOnError();
+  } finally {
+    state.processing = false;
+    setActionBtnState(false);
+  }
+}
+
+function updateProgressBar(pct, detail) {
+  const sub = document.getElementById('resultSub');
+  sub.textContent = `${detail}...`;
+  
+  // Update UI step description dynamically to show progress percentage
+  const stepDesc4 = document.getElementById('stepDesc4');
+  if (stepDesc4) stepDesc4.textContent = `Progress: ${pct}%`;
+}
+
+// ── History logs / Local Ledger in IndexedDB ──────────────────────────────────
+
+function appendLedgerEntry(hash, file, op, size, status, integrityHash) {
+  if (!state.currentUser) return;
+
+  const now = new Date();
+  const time = now.toISOString().replace('T', ' ').substring(0, 19);
+
+  const tx = state.db.transaction('ledger', 'readwrite');
+  const store = tx.objectStore('ledger');
+  
+  store.add({
+    username: state.currentUser,
+    txHash: hash,
+    timestamp: time,
+    fileName: file,
+    operation: op,
+    size: size,
+    status: status,
+    sha256: integrityHash || 'N/A'
+  });
+}
+
+function initLedgerData() {
+  const tbody = document.getElementById('ledgerTableBody');
+  if (!tbody || !state.currentUser) return;
+  tbody.innerHTML = '';
+
+  const tx = state.db.transaction('ledger', 'readonly');
+  const store = tx.objectStore('ledger');
+
+  const cursorReq = store.openCursor();
+  cursorReq.onsuccess = (e) => {
+    const cursor = e.target.result;
+    if (cursor) {
+      const log = cursor.value;
+      if (log.username === state.currentUser) {
+        const tr = document.createElement('tr');
+        const badge = log.operation === 'ENCRYPT' ? 'bg-info-subtle' : 'bg-warning-subtle';
+        tr.innerHTML = `
+          <td style="font-family:monospace; color:var(--primary-light);" title="SHA-256: ${log.sha256}">${log.txHash}</td>
+          <td style="color:var(--text-muted);">${log.timestamp}</td>
+          <td title="${log.fileName}">${log.fileName}</td>
+          <td><span class="badge-status ${badge}">${log.operation}</span></td>
+          <td>${log.size}</td>
+          <td><span class="badge-status bg-success-subtle">${log.status}</span></td>
+        `;
+        tbody.appendChild(tr);
+      }
+      cursor.continue();
+    }
+  };
+}
+
+function clearLedgerHistory() {
+  if (!state.currentUser) return;
+  
+  addLog('Clearing IndexedDB Ledger logs...', 'info');
+  const tx = state.db.transaction('ledger', 'readwrite');
+  const store = tx.objectStore('ledger');
+  
+  const cursorReq = store.openCursor();
+  cursorReq.onsuccess = (e) => {
+    const cursor = e.target.result;
+    if (cursor) {
+      if (cursor.value.username === state.currentUser) {
+        cursor.delete();
+      }
+      cursor.continue();
+    } else {
+      initLedgerData();
+      addLog('Ledger history cleared successfully.', 'success');
+    }
+  };
+}
+
+// ── Download & UI Actions ───────────────────────────────────────────────────
+
+function downloadResult() {
+  if (!state.resultBlob) return;
+  const url = URL.createObjectURL(state.resultBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = state.outputName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+
+  addLog(`File download initiated: ${state.outputName}`, 'success');
+}
+
+function resetAll() {
+  state.selectedFile = null;
+  state.batchFiles = [];
+  state.resultBlob = null;
+  state.outputName = '';
+  state.keyFileHash = null;
+
+  document.getElementById('folderTrigger').classList.remove('hidden');
+  document.getElementById('fileSelected').classList.add('hidden');
+  document.getElementById('batchFilesList').classList.add('hidden');
+
+  // Reset passwords
+  document.getElementById('passwordInput').value = '';
+  document.getElementById('confirmInput').value = '';
+  document.getElementById('strengthFill').className = 'strength-fill';
+  document.getElementById('strengthLabel').textContent = 'Enter password';
+  document.getElementById('confirmIndicator').className = 'confirm-indicator';
+  document.getElementById('confirmMsg').classList.add('hidden');
+  
+  if (document.getElementById('keyFileInput')) document.getElementById('keyFileInput').value = '';
+  if (document.getElementById('chk2FA')) document.getElementById('chk2FA').checked = false;
+  if (document.getElementById('keyFileInputArea')) document.getElementById('keyFileInputArea').classList.add('hidden');
+  if (document.getElementById('chkStreaming')) document.getElementById('chkStreaming').checked = false;
+
+  ['req-len', 'req-upper', 'req-num', 'req-sym'].forEach(id => {
+    document.getElementById(id).classList.remove('met');
+  });
+
+  resetSteps();
+  hideResult();
+}
+
+// ── Steps UI Helpers ─────────────────────────────────────────────────────────
+
+function setStepState(n, s) {
   const el = document.getElementById(`step-${n}`);
+  if (!el) return;
   const wait = el.querySelector('.step-icon-wait');
   const done = el.querySelector('.step-icon-done');
   const spinner = el.querySelector('.step-spinner');
@@ -211,17 +1018,16 @@ function setStepState(n, state) {
   done.classList.add('hidden');
   spinner.classList.add('hidden');
 
-  if (state === 'active') {
+  if (s === 'active') {
     el.classList.add('active');
     wait.classList.remove('hidden');
-  } else if (state === 'processing') {
+  } else if (s === 'processing') {
     el.classList.add('active');
     spinner.classList.remove('hidden');
-  } else if (state === 'done') {
+  } else if (s === 'done') {
     el.classList.add('done');
     done.classList.remove('hidden');
   } else {
-    // pending
     wait.classList.remove('hidden');
   }
 }
@@ -232,6 +1038,7 @@ function markStepActive(n) { setStepState(n, 'active'); }
 
 function resetStep(n) {
   const el = document.getElementById(`step-${n}`);
+  if (!el) return;
   const wait = el.querySelector('.step-icon-wait');
   const done = el.querySelector('.step-icon-done');
   const spinner = el.querySelector('.step-spinner');
@@ -249,15 +1056,13 @@ function resetSteps() {
   document.getElementById('step-1').classList.add('active');
 }
 
-// ── Log Entries ───────────────────────────────────────────────────────────────
-
-const logColors = { info: 'info', success: 'success', error: 'error' };
+// ── Log entries ──────────────────────────────────────────────────────────────
 
 function addLog(msg, type = 'info') {
   const entries = document.getElementById('logEntries');
+  if (!entries) return;
   const now = new Date();
   const ts = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}`;
-
   const dots = { info: '→', success: '✓', error: '✗' };
 
   const entry = document.createElement('div');
@@ -272,10 +1077,62 @@ function addLog(msg, type = 'info') {
 }
 
 function clearLog() {
-  document.getElementById('logEntries').innerHTML = '';
+  const entries = document.getElementById('logEntries');
+  if (entries) entries.innerHTML = '';
 }
 
-// ── Result Panel ──────────────────────────────────────────────────────────────
+// ── Mode Switching ────────────────────────────────────────────────────────────
+
+function switchMode(mode) {
+  if (state.processing) return;
+  state.mode = mode;
+
+  const encBtn = document.getElementById('encryptModeBtn');
+  const decBtn = document.getElementById('decryptModeBtn');
+  const slider = document.getElementById('modeSlider');
+  const confirmW = document.getElementById('confirmWrap');
+  const btnText = document.getElementById('btnText');
+  const btnIcon = document.getElementById('btnIcon');
+  const stepName3 = document.getElementById('stepName3');
+  const stepName4 = document.getElementById('stepName4');
+  const stepDesc4 = document.getElementById('stepDesc4');
+
+  if (mode === 'encrypt') {
+    encBtn.classList.add('active');
+    decBtn.classList.remove('active');
+    slider.classList.remove('right');
+    confirmW.classList.remove('hidden');
+    btnText.textContent = 'Encrypt File';
+    btnIcon.innerHTML = `<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`;
+    stepName3.textContent = 'Key Derivation';
+    stepName4.textContent = 'AES-256-GCM Encrypt';
+    stepDesc4.textContent = 'Encrypt file data';
+  } else {
+    decBtn.classList.add('active');
+    encBtn.classList.remove('active');
+    slider.classList.add('right');
+    confirmW.classList.add('hidden');
+    btnText.textContent = 'Decrypt File';
+    btnIcon.innerHTML = `<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`;
+    stepName3.textContent = 'Key Derivation';
+    stepName4.textContent = 'AES-256-GCM Decrypt';
+    stepDesc4.textContent = 'Decrypt & verify auth tag';
+  }
+
+  // Switch RSA key fields as well
+  if (state.keyType === 'asymmetric') {
+    toggleAsymmetricKeyFields();
+  }
+
+  resetSteps();
+  hideResult();
+  
+  if (state.selectedFile) {
+    loadFile(state.selectedFile);
+  }
+}
+
+// ── Result Panels ────────────────────────────────────────────────────────────
 
 function showResultProcessing() {
   const panel = document.getElementById('resultPanel');
@@ -298,11 +1155,10 @@ function showResultProcessing() {
 
   title.textContent = state.mode === 'encrypt' ? 'Encrypting file...' : 'Decrypting file...';
   sub.textContent = 'Processing — please wait';
-
   clearLog();
 }
 
-function showResultSuccess(outputName, inputSize, outputSize) {
+function showResultSuccess(outputName, inputSize, outputSize, integrityHash) {
   const spinner = document.getElementById('resultSpinner');
   const check = document.getElementById('resultCheck');
   const title = document.getElementById('resultTitle');
@@ -321,17 +1177,22 @@ function showResultSuccess(outputName, inputSize, outputSize) {
 
   title.textContent = state.mode === 'encrypt' ? '🔒 File Encrypted Successfully!' : '🔓 File Decrypted Successfully!';
   sub.textContent = `Your file is ready for download`;
-
   dlBtn.textContent = `Download: ${outputName}`;
 
   resultStats.innerHTML = `
     <div class="stat-item"><div class="stat-label">Input Size</div><div class="stat-value">${formatBytes(inputSize)}</div></div>
     <div class="stat-item"><div class="stat-label">Output Size</div><div class="stat-value">${formatBytes(outputSize)}</div></div>
     <div class="stat-item"><div class="stat-label">Algorithm</div><div class="stat-value">AES-256-GCM</div></div>
-    <div class="stat-item"><div class="stat-label">Key Derivation</div><div class="stat-value">PBKDF2·310k</div></div>
+    <div class="stat-item"><div class="stat-label">Key Derivation</div><div class="stat-value">${state.keyType === 'asymmetric' ? 'RSA Hybrid' : 'PBKDF2·600k'}</div></div>
   `;
 
   dlSec.classList.remove('hidden');
+
+  // Add event to ledger history
+  const op = state.mode.toUpperCase();
+  const txHash = '0x' + (integrityHash ? integrityHash.slice(0, 10) : Array.from({length:8}, () => Math.floor(Math.random()*16).toString(16)).join('')) + '...';
+  appendLedgerEntry(txHash, outputName, op, formatBytes(outputSize), 'SUCCESS', integrityHash);
+  initLedgerData();
 }
 
 function showResultError(errMsg) {
@@ -352,172 +1213,13 @@ function showResultError(errMsg) {
   sub.textContent = errMsg;
 
   addLog(errMsg, 'error');
+  resetStepsOnError();
 }
 
 function hideResult() {
-  document.getElementById('resultPanel').classList.add('hidden');
+  const el = document.getElementById('resultPanel');
+  if (el) el.classList.add('hidden');
 }
-
-// ── Main Process ───────────────────────────────────────────────────────────────
-
-async function processFile() {
-  if (state.processing) return;
-
-  const file = state.selectedFile;
-  const password = document.getElementById('passwordInput').value;
-  const confirm = document.getElementById('confirmInput').value;
-
-  // Validation
-  if (!file) {
-    shakeElement('dropZone');
-    addLog('No file selected', 'error');
-    return;
-  }
-  if (!password) {
-    shakeElement('passwordInput');
-    document.getElementById('passwordInput').focus();
-    return;
-  }
-  if (state.mode === 'encrypt' && password !== confirm) {
-    shakeElement('confirmInput');
-    document.getElementById('confirmMsg').classList.remove('hidden');
-    return;
-  }
-
-  // UI → processing state
-  state.processing = true;
-  setActionBtnState(true);
-  showResultProcessing();
-
-  try {
-    const fileBuffer = await file.arrayBuffer();
-    const outputName = getOutputFilename(file.name, state.mode);
-
-    if (state.mode === 'encrypt') {
-      await runEncrypt(fileBuffer, password, file, outputName);
-    } else {
-      await runDecrypt(fileBuffer, password, file, outputName);
-    }
-
-  } catch (err) {
-    showResultError(err.message || 'Unknown error');
-    resetStepsOnError();
-  } finally {
-    state.processing = false;
-    setActionBtnState(false);
-  }
-}
-
-async function runEncrypt(fileBuffer, password, file, outputName) {
-  // Steps 3 & 4: Key derivation + encrypt
-  markStepProcessing(3);
-
-  let stepPhase = 'keyDerive';
-
-  const result = await encryptFile(fileBuffer, password, (phase, msg) => {
-    if (phase !== stepPhase) {
-      if (stepPhase === 'keyDerive' || stepPhase === 'saltGen') {
-        // key derivation done, move to step 4
-        if (phase === 'ivGen' || phase === 'encrypt') {
-          markStepDone(3);
-          markStepProcessing(4);
-          stepPhase = 'encrypt';
-        }
-      } else if (stepPhase === 'encrypt') {
-        stepPhase = phase;
-      }
-    }
-
-    const type = phase === 'encrypt' ? 'info' : (phase === 'package' ? 'success' : 'info');
-    addLog(`[${phase.toUpperCase()}] ${msg}`, type);
-  });
-
-  markStepDone(3);
-  markStepDone(4);
-
-  // Finalize
-  addLog(`Output ready: ${outputName} (${formatBytes(result.encrypted.byteLength)})`, 'success');
-  markStepDone(5);
-
-  // Store result
-  state.resultBlob = new Blob([result.encrypted], { type: 'application/octet-stream' });
-  state.outputName = outputName;
-
-  showResultSuccess(outputName, fileBuffer.byteLength, result.encrypted.byteLength);
-}
-
-async function runDecrypt(fileBuffer, password, file, outputName) {
-  markStepProcessing(3);
-  let stepPhase = 'validate';
-
-  const result = await decryptFile(fileBuffer, password, (phase, msg) => {
-    if (phase === 'keyDerive' && stepPhase !== 'keyDerive') {
-      markStepDone(3);
-      markStepProcessing(4);
-      stepPhase = 'decrypt';
-    } else if (phase === 'decrypt' && stepPhase !== 'decrypt') {
-      stepPhase = 'decrypt';
-    }
-
-    const type = phase === 'decrypt' ? 'success' : 'info';
-    addLog(`[${phase.toUpperCase()}] ${msg}`, type);
-  });
-
-  markStepDone(3);
-  markStepDone(4);
-
-  addLog(`Output ready: ${outputName} (${formatBytes(result.decrypted.byteLength)})`, 'success');
-  markStepDone(5);
-
-  state.resultBlob = new Blob([result.decrypted], { type: 'application/octet-stream' });
-  state.outputName = outputName;
-
-  showResultSuccess(outputName, fileBuffer.byteLength, result.decrypted.byteLength);
-}
-
-// ── Download ──────────────────────────────────────────────────────────────────
-
-function downloadResult() {
-  if (!state.resultBlob) return;
-  const url = URL.createObjectURL(state.resultBlob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = state.outputName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-
-  addLog(`File download initiated: ${state.outputName}`, 'success');
-}
-
-// ── Reset ─────────────────────────────────────────────────────────────────────
-
-function resetAll() {
-  state.selectedFile = null;
-  state.resultBlob = null;
-  state.outputName = '';
-
-  // Reset file zone
-  document.getElementById('folderTrigger').classList.remove('hidden');
-  document.getElementById('fileSelected').classList.add('hidden');
-
-  // Reset passwords
-  document.getElementById('passwordInput').value = '';
-  document.getElementById('confirmInput').value = '';
-  document.getElementById('strengthFill').className = 'strength-fill';
-  document.getElementById('strengthLabel').textContent = 'Enter password';
-  document.getElementById('confirmIndicator').className = 'confirm-indicator';
-  document.getElementById('confirmMsg').classList.add('hidden');
-  ['req-len', 'req-upper', 'req-num', 'req-sym'].forEach(id => {
-    document.getElementById(id).classList.remove('met');
-  });
-
-  resetSteps();
-  hideResult();
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function setActionBtnState(disabled) {
   const btn = document.getElementById('actionBtn');
@@ -535,7 +1237,6 @@ function setActionBtnState(disabled) {
 }
 
 function resetStepsOnError() {
-  // Keep step 1 and 2 as done if they were
   for (let i = 3; i <= 5; i++) resetStep(i);
 }
 
@@ -548,7 +1249,7 @@ function shakeElement(id) {
   setTimeout(() => el.style.animation = '', 500);
 }
 
-// Add shake keyframes dynamically
+// Add shake keyframes
 (function addShakeKeyframe() {
   const style = document.createElement('style');
   style.textContent = `
@@ -563,18 +1264,54 @@ function shakeElement(id) {
   document.head.appendChild(style);
 })();
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Drag & Drop Handlers ─────────────────────────────────────────────────────
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('folderTrigger').classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  document.getElementById('folderTrigger').classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('folderTrigger').classList.remove('drag-over');
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    if (state.fileMode === 'single') {
+      loadFile(files[0]);
+    } else {
+      loadBatchFiles(Array.from(files));
+    }
+  }
+}
+
+// ── DOM Init ──────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Handle Splash Screen Animation
+  // Initialize DB
+  initDatabase().then(() => {
+    // Check session
+    const savedUser = sessionStorage.getItem('currentUser');
+    if (savedUser) {
+      loginUser(savedUser);
+    } else {
+      // Force Login Overlay
+      const overlay = document.getElementById('masterLoginOverlay');
+      overlay.classList.add('open');
+      overlay.style.display = 'flex';
+      switchAuthTab('signin');
+    }
+  });
+
   const splash = document.getElementById('splashScreen');
   if (splash) {
     if (sessionStorage.getItem('skipSplash') === '1') {
-      // Came from splash.html — skip the built-in splash immediately
       sessionStorage.removeItem('skipSplash');
       splash.remove();
     } else {
-      // Normal load — wait for the CSS progress bar animation (2.5s)
       setTimeout(() => {
         splash.classList.add('fade-out');
         setTimeout(() => splash.remove(), 600);
@@ -582,89 +1319,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Check for Secure Context / Web Crypto API support
-  if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
-    const warningBanner = document.getElementById('secureContextWarning');
-    if (warningBanner) {
-      warningBanner.classList.remove('hidden');
-    }
-  }
-
-  // Keyboard shortcut: Enter to process when not in textarea
+  // Keyboard shortcut: Enter to process
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       processFile();
     }
   });
 
-  // Prevent default drag on body
   document.body.addEventListener('dragover', e => e.preventDefault());
   document.body.addEventListener('drop', e => e.preventDefault());
 
-  // Suppress logs in production
-  // console.log('%c SecureVault Ready ', '...');
-
-  // PWA Service Worker & Manifest Registration
+  // Register PWA service worker
   if (window.location.protocol !== 'file:') {
-    const link = document.createElement('link');
-    link.rel = 'manifest';
-    link.href = 'manifest.json';
-    document.head.appendChild(link);
-
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   }
 });
 
+
 // ══════════════════════════════════════════════════════════════════
-//  FOLDER WINDOW MODULE
+//  FOLDER WINDOW / VIRTUAL DESKTOP MODULE (IndexedDB Backed)
 // ══════════════════════════════════════════════════════════════════
 
 const fwState = {
-  view: 'grid',            // 'grid' | 'list'
+  view: 'grid',
   currentPath: 'Desktop',
-  selectedFile: null,      // virtual or real File object
-  pendingRealFile: null,   // real File from drop inside window
+  selectedFile: null,      // Virtual File object
+  pendingRealFile: null,   // Real File from drop inside window
   history: ['Desktop'],
   historyIdx: 0
-};
-
-// Virtual file system for demo purposes
-const virtualFS = {
-  Desktop: [
-    { name: 'Documents', type: 'folder', size: null, date: '4/10/2026' },
-    { name: 'report_Q1.pdf', type: 'pdf', size: 2457600, date: '4/11/2026' },
-    { name: 'backup.zip',    type: 'zip', size: 18340000, date: '4/8/2026' },
-    { name: 'photo.jpg',     type: 'image', size: 3145728, date: '4/12/2026' },
-    { name: 'notes.txt',     type: 'text', size: 4096, date: '4/9/2026' },
-    { name: 'project.docx',  type: 'word', size: 512000, date: '3/28/2026' },
-    { name: 'data.xlsx',     type: 'excel', size: 256000, date: '4/1/2026' },
-    { name: 'archive.tar',   type: 'zip', size: 9437184, date: '3/22/2026' },
-    { name: 'script.py',     type: 'code', size: 8192, date: '4/5/2026' },
-    { name: 'video.mp4',     type: 'video', size: 157286400, date: '4/3/2026' },
-  ],
-  Documents: [
-    { name: 'contract.pdf', type: 'pdf', size: 1048576, date: '3/15/2026' },
-    { name: 'resume.docx',  type: 'word', size: 77824, date: '4/2/2026' },
-    { name: 'taxes.xlsx',   type: 'excel', size: 204800, date: '3/31/2026' },
-    { name: 'notes.txt',    type: 'text', size: 2048, date: '4/10/2026' },
-  ],
-  Downloads: [
-    { name: 'installer.exe', type: 'exe', size: 67108864, date: '4/7/2026' },
-    { name: 'ebook.pdf',     type: 'pdf', size: 5242880, date: '4/6/2026' },
-    { name: 'music.mp3',     type: 'audio', size: 8388608, date: '4/4/2026' },
-  ],
-  Pictures: [
-    { name: 'vacation.jpg',  type: 'image', size: 4194304, date: '3/20/2026' },
-    { name: 'portrait.png',  type: 'image', size: 2097152, date: '4/1/2026' },
-    { name: 'wallpaper.jpg', type: 'image', size: 6291456, date: '3/25/2026' },
-  ],
-  LocalDisk: [
-    { name: 'Users',   type: 'folder', size: null, date: '1/1/2026' },
-    { name: 'Windows', type: 'folder', size: null, date: '1/1/2026' },
-    { name: 'Program Files', type: 'folder', size: null, date: '1/1/2026' },
-  ]
 };
 
 const fileTypeColors = {
@@ -719,19 +1403,6 @@ function makeFileSVG(type, size = 44) {
   </svg>`;
 }
 
-function makeFileSVGFromExt(name, size = 44) {
-  const t = inferType({ name, type: 'file' });
-  if (t === 'folder') return makeFileSVG('folder', size);
-  const c = fileTypeColors[t] || fileTypeColors.text;
-  const ext = getFileExt(name).toUpperCase().slice(0, 4) || t.slice(0,3).toUpperCase();
-  const hs = size * 0.9;
-  return `<svg width="${hs * 0.7}" height="${hs}" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M18 2H6C4.3 2 3 3.3 3 5v26c0 1.7 1.3 3 3 3h16c1.7 0 3-1.3 3-3V10L18 2z" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5" stroke-linejoin="round"/>
-    <path d="M18 2v8h8" stroke="${c.stroke}" stroke-width="1.5" stroke-linejoin="round"/>
-    <text x="14" y="26" text-anchor="middle" fill="${c.label}" font-size="7" font-weight="800" font-family="monospace">${ext}</text>
-  </svg>`;
-}
-
 function openFolderWindow() {
   const overlay = document.getElementById('folderWindowOverlay');
   overlay.classList.add('open');
@@ -740,7 +1411,6 @@ function openFolderWindow() {
   fwState.pendingRealFile = null;
   fwRenderFiles();
   fwUpdateStatus();
-  document.getElementById('fwSearch').value = '';
 }
 
 function closeFolderWindow() {
@@ -755,8 +1425,6 @@ function closeFolderWindowOnBackdrop(e) {
 }
 
 function fwNavTo(path) {
-  if (!virtualFS[path]) return;
-  // Trim future history if navigated back
   fwState.history = fwState.history.slice(0, fwState.historyIdx + 1);
   fwState.history.push(path);
   fwState.historyIdx = fwState.history.length - 1;
@@ -765,12 +1433,10 @@ function fwNavTo(path) {
   fwState.pendingRealFile = null;
   document.getElementById('fwSearch').value = '';
 
-  // Sidebar highlight
   document.querySelectorAll('.fw-sidebar-item').forEach(el => {
     el.classList.toggle('active', el.dataset.path === path);
   });
 
-  // Breadcrumb
   fwUpdateBreadcrumb(path);
   fwRenderFiles();
   fwUpdateStatus();
@@ -818,62 +1484,101 @@ document.getElementById('fwFwdBtn').addEventListener('click', () => {
 
 function fwRenderFiles(filter = '') {
   const container = document.getElementById('fwFilesContainer');
-  const entries = virtualFS[fwState.currentPath] || [];
-  const q = filter.toLowerCase();
-  const filtered = q ? entries.filter(e => e.name.toLowerCase().includes(q)) : entries;
-
+  if (!container || !state.currentUser) return;
   container.className = `fw-files-container ${fwState.view}-view`;
   container.innerHTML = '';
 
-  if (filtered.length === 0) {
-    container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-subtle);font-size:13px;">No files found</div>`;
-    return;
-  }
+  const q = filter.toLowerCase();
 
-  filtered.forEach(entry => {
-    const t = entry.type === 'folder' ? 'folder' : inferType(entry);
-    const isFolder = t === 'folder';
-    const isSelected = (!isFolder && fwState.selectedFile && fwState.selectedFile.name === entry.name);
-    
-    const el = document.createElement('div');
-    el.className = `fw-file-item${isFolder ? ' fw-folder-item' : ''}${isSelected ? ' selected' : ''}`;
-    el.dataset.name = entry.name;
+  // Load custom user files from IndexedDB
+  const tx = state.db.transaction('virtual_files', 'readonly');
+  const store = tx.objectStore('virtual_files');
 
-    const iconHtml = makeFileSVG(t, fwState.view === 'grid' ? 44 : 22);
-
-    if (fwState.view === 'grid') {
-      el.innerHTML = `
-        <div class="fw-file-icon">${iconHtml}</div>
-        <div class="fw-file-name">${entry.name}</div>
-      `;
+  const files = [];
+  const cursorReq = store.openCursor();
+  cursorReq.onsuccess = (e) => {
+    const cursor = e.target.result;
+    if (cursor) {
+      const fileVal = cursor.value;
+      if (fileVal.username === state.currentUser && fileVal.path === fwState.currentPath) {
+        files.push(fileVal);
+      }
+      cursor.continue();
     } else {
-      el.innerHTML = `
-        <div class="fw-file-icon">${iconHtml}</div>
-        <div class="fw-file-name">${entry.name}</div>
-        <div class="fw-file-type">${t.charAt(0).toUpperCase()+t.slice(1)}</div>
-        <div class="fw-file-size">${isFolder ? '—' : formatBytes(entry.size)}</div>
-        <div class="fw-file-date">${entry.date}</div>
-      `;
+      // Finished loading files, now render
+      renderVirtualList(files);
+    }
+  };
+
+  function renderVirtualList(virtualFiles) {
+    // Add default virtual folders/files for Desktop if empty
+    if (virtualFiles.length === 0 && fwState.currentPath === 'Desktop') {
+      const defaultDocs = [
+        { name: 'Documents', type: 'folder', size: 0, date: '4/10/2026', path: 'Desktop', username: state.currentUser },
+        { name: 'notes.txt', type: 'text', size: 24, date: '4/12/2026', path: 'Desktop', username: state.currentUser, content: new TextEncoder().encode("SecureVault User Notes.") },
+      ];
+      // Save default
+      const wrTx = state.db.transaction('virtual_files', 'readwrite');
+      const wrStore = wrTx.objectStore('virtual_files');
+      defaultDocs.forEach(d => wrStore.add(d));
+      
+      wrTx.oncomplete = () => {
+        fwRenderFiles(filter);
+      };
+      return;
     }
 
-    el.addEventListener('click', () => {
-      if (isFolder) {
-        fwNavTo(entry.name);
-        return;
+    const filtered = q ? virtualFiles.filter(e => e.name.toLowerCase().includes(q)) : virtualFiles;
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-subtle);font-size:13px;">No files found in ${fwState.currentPath}</div>`;
+      return;
+    }
+
+    filtered.forEach(entry => {
+      const t = entry.type === 'folder' ? 'folder' : inferType(entry);
+      const isFolder = t === 'folder';
+      const isSelected = (!isFolder && fwState.selectedFile && fwState.selectedFile.id === entry.id);
+
+      const el = document.createElement('div');
+      el.className = `fw-file-item${isFolder ? ' fw-folder-item' : ''}${isSelected ? ' selected' : ''}`;
+
+      const iconHtml = makeFileSVG(t, fwState.view === 'grid' ? 44 : 22);
+
+      if (fwState.view === 'grid') {
+        el.innerHTML = `
+          <div class="fw-file-icon">${iconHtml}</div>
+          <div class="fw-file-name">${entry.name}</div>
+        `;
+      } else {
+        el.innerHTML = `
+          <div class="fw-file-icon">${iconHtml}</div>
+          <div class="fw-file-name">${entry.name}</div>
+          <div class="fw-file-type">${t.charAt(0).toUpperCase() + t.slice(1)}</div>
+          <div class="fw-file-size">${isFolder ? '—' : formatBytes(entry.size)}</div>
+          <div class="fw-file-date">${entry.date}</div>
+        `;
       }
-      container.querySelectorAll('.fw-file-item').forEach(i => i.classList.remove('selected'));
-      el.classList.add('selected');
-      fwState.selectedFile = entry;
-      fwState.pendingRealFile = null;
-      fwUpdateStatus(entry, false);
-    });
 
-    el.addEventListener('dblclick', () => {
-      if (!isFolder) confirmFolderSelection();
-    });
+      el.addEventListener('click', () => {
+        if (isFolder) {
+          fwNavTo(entry.name);
+          return;
+        }
+        container.querySelectorAll('.fw-file-item').forEach(i => i.classList.remove('selected'));
+        el.classList.add('selected');
+        fwState.selectedFile = entry;
+        fwState.pendingRealFile = null;
+        fwUpdateStatus(entry, false);
+      });
 
-    container.appendChild(el);
-  });
+      el.addEventListener('dblclick', () => {
+        if (!isFolder) confirmFolderSelection();
+      });
+
+      container.appendChild(el);
+    });
+  }
 }
 
 function filterFolderFiles() {
@@ -905,31 +1610,68 @@ function fwUpdateStatus(entry = null, isReal = false) {
 
 function confirmFolderSelection() {
   if (fwState.pendingRealFile) {
-    loadFile(fwState.pendingRealFile);
-    closeFolderWindow();
+    // Import real file to database Virtual Filesystem, then load it
+    saveFileToVirtualFS(fwState.pendingRealFile);
     return;
   }
   if (fwState.selectedFile) {
-    // For virtual files: trigger the real file picker as a fallback
-    // (browsers can't load virtual files)
-    triggerRealFilePicker();
+    // Convert Virtual File to real File object and load it
+    const virtualFile = fwState.selectedFile;
+    const fileObj = new File([virtualFile.content], virtualFile.name, { type: virtualFile.mimeType || 'application/octet-stream' });
+    loadFile(fileObj);
+    closeFolderWindow();
   }
 }
 
 function triggerRealFilePicker() {
-  // Show a hint and trigger the actual picker
   closeFolderWindow();
   document.getElementById('fileInput').click();
 }
 
-// Drag-and-drop inside the folder window
+function triggerRealFolderPicker() {
+  closeFolderWindow();
+  document.getElementById('folderInput').click();
+}
+
+function saveFileToVirtualFS(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const arrayBuffer = reader.result;
+    
+    const tx = state.db.transaction('virtual_files', 'readwrite');
+    const store = tx.objectStore('virtual_files');
+
+    const entry = {
+      username: state.currentUser,
+      name: file.name,
+      type: file.type || 'application/octet-stream',
+      size: file.size,
+      date: new Date().toLocaleDateString(),
+      path: fwState.currentPath,
+      content: arrayBuffer,
+      mimeType: file.type
+    };
+
+    store.add(entry).onsuccess = () => {
+      addLog(`Imported file to Virtual Workspace: ${file.name}`, 'success');
+      fwRenderFiles();
+      fwState.pendingRealFile = null;
+      fwUpdateStatus();
+    };
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Drag-and-drop inside folder window
 function handleFwDragOver(e) {
   e.preventDefault();
   document.getElementById('fwDropzone').classList.add('fw-drag-active');
 }
+
 function handleFwDragLeave(e) {
   document.getElementById('fwDropzone').classList.remove('fw-drag-active');
 }
+
 function handleFwDrop(e) {
   e.preventDefault();
   document.getElementById('fwDropzone').classList.remove('fw-drag-active');
@@ -937,19 +1679,18 @@ function handleFwDrop(e) {
   if (file) {
     fwState.pendingRealFile = file;
     fwState.selectedFile = null;
-    // Deselect any previously selected virtual file
     document.querySelectorAll('.fw-file-item').forEach(i => i.classList.remove('selected'));
     fwUpdateStatus(null, true);
   }
 }
 
-// Escape key closes window
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     const overlay = document.getElementById('folderWindowOverlay');
-    if (overlay.classList.contains('open')) closeFolderWindow();
+    if (overlay && overlay.classList.contains('open')) closeFolderWindow();
   }
 });
+
 
 // ══════════════════════════════════════════════════════════════════
 //  CYBER SUITE DASHBOARD LOGIC
@@ -958,15 +1699,14 @@ document.addEventListener('keydown', (e) => {
 function switchTab(tabId, e) {
   if (e) e.preventDefault();
   
-  // Update Nav Items
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  document.getElementById('tabBtn-' + tabId).classList.add('active');
+  const btn = document.getElementById('tabBtn-' + tabId);
+  if (btn) btn.classList.add('active');
 
-  // Update Contents
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.getElementById('content-' + tabId).classList.add('active');
+  const content = document.getElementById('content-' + tabId);
+  if (content) content.classList.add('active');
 
-  // Update Topbar Title
   const titles = {
     'vault': 'Dashboard / File Vault',
     'firewall': 'Dashboard / Enterprise Secure Firewall',
@@ -983,7 +1723,7 @@ function switchTab(tabId, e) {
 
 function initFirewallData() {
   const tbody = document.getElementById('firewallTableBody');
-  if (tbody.children.length > 0) return; // already initialized
+  if (!tbody || tbody.children.length > 0) return;
 
   const connections = [
     { proto: 'TCP', local: '192.168.1.105:443', foreign: '104.21.45.120:443', state: 'ESTABLISHED', action: 'ALLOW' },
@@ -1010,7 +1750,7 @@ function initFirewallData() {
 let caseCounter = 1042;
 function initCasesData() {
   const tbody = document.getElementById('casesTableBody');
-  if (tbody.children.length > 0) return;
+  if (!tbody || tbody.children.length > 0) return;
   generateMockCase('SQL Injection Attempt', 'High', 'Resolved');
   generateMockCase('Unauthorized Port Scan', 'Medium', 'Blocked');
   generateMockCase('Failed SSH Login', 'Low', 'Investigating');
@@ -1018,6 +1758,7 @@ function initCasesData() {
 
 function generateMockCase(type = null, severity = null, status = null) {
   const tbody = document.getElementById('casesTableBody');
+  if (!tbody) return;
   
   const types = ['DDoS Attempt (Threat Intel Blocked)', 'Malware Signature Match', 'Corporate Security Policy Violation', 'Brute Force Attack', 'Data Exfiltration Attempt'];
   const severities = ['Critical', 'High', 'Medium', 'Low'];
@@ -1053,55 +1794,11 @@ function generateMockCase(type = null, severity = null, status = null) {
     tbody.appendChild(tr);
   }
 
-  // Update threat count in Firewall
   const tCount = document.getElementById('threatCount');
   if (tCount) {
     tCount.textContent = (parseInt(tCount.textContent.replace(',','')) + 1).toLocaleString();
   }
 }
-
-function initLedgerData() {
-  const tbody = document.getElementById('ledgerTableBody');
-  if (tbody.children.length > 0) return;
-  
-  const ledgers = [
-    { hash: '0x3f...9e', file: 'contract_q1.pdf', op: 'ENCRYPT', size: '2.4 MB', status: 'SUCCESS' },
-    { hash: '0xa1...2b', file: 'backup_keys.zip', op: 'DECRYPT', size: '1.1 MB', status: 'SUCCESS' },
-    { hash: '0x9c...7f', file: 'passwords.txt', op: 'ENCRYPT', size: '4.0 KB', status: 'SUCCESS' }
-  ];
-
-  ledgers.forEach(l => appendLedgerEntry(l.hash, l.file, l.op, l.size, l.status));
-}
-
-function appendLedgerEntry(hash, file, op, size, status) {
-  const tbody = document.getElementById('ledgerTableBody');
-  if (!tbody) return;
-  const now = new Date();
-  const time = now.toISOString().replace('T', ' ').substring(0, 19);
-
-  const tr = document.createElement('tr');
-  const badge = op === 'ENCRYPT' ? 'bg-info-subtle' : 'bg-warning-subtle';
-  tr.innerHTML = `
-    <td style="font-family:monospace; color:var(--primary-light);">${hash}</td>
-    <td style="color:var(--text-muted);">${time}</td>
-    <td>${file}</td>
-    <td><span class="badge-status ${badge}">${op}</span></td>
-    <td>${size}</td>
-    <td><span class="badge-status bg-success-subtle">${status}</span></td>
-  `;
-  if (tbody.firstChild) tbody.insertBefore(tr, tbody.firstChild);
-  else tbody.appendChild(tr);
-}
-
-// Hook ledger into actual encryption flow
-const originalShowResultSuccess = showResultSuccess;
-showResultSuccess = function(outputName, inputSize, outputSize) {
-  originalShowResultSuccess(outputName, inputSize, outputSize);
-  // Add to ledger dynamically
-  const op = state.mode.toUpperCase();
-  const hash = '0x' + Array.from({length:8}, () => Math.floor(Math.random()*16).toString(16)).join('') + '...';
-  appendLedgerEntry(hash, outputName, op, formatBytes(outputSize), 'SUCCESS');
-};
 
 function handleAiKey(e) {
   if (e.key === 'Enter') sendAiMessage();
@@ -1115,27 +1812,20 @@ function sendAiMessage() {
 
   const chat = document.getElementById('aiChatWindow');
   
-  // User message
   const userMsg = document.createElement('div');
   userMsg.className = 'ai-msg ai-user';
   userMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div class="ai-bubble">${text}</div>`;
   chat.appendChild(userMsg);
   chat.scrollTop = chat.scrollHeight;
 
-  // AI Typing
-  // AI Typing
   setTimeout(() => {
     const sysMsg = document.createElement('div');
     sysMsg.className = 'ai-msg ai-sys';
-    sysMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">Analyzing context and checking cryptographic parameters...<br><br>The file structures appear secure. I have parsed your deeper notes and verified that they can be appended to the Unified Ledger using AES-256-GCM without exposing key artifacts.</div>`;
+    sysMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">Analyzing context and checking cryptographic parameters...<br><br>The client-side profiles are fully active in IndexedDB. I have locked your active session with SHA-256 password digests and isolated all transactional records. Let me know if you want to inspect specific file systems!</div>`;
     chat.appendChild(sysMsg);
     chat.scrollTop = chat.scrollHeight;
   }, 1000);
 }
-
-// ══════════════════════════════════════════════════════════════════
-//  ADVANCED SECURITY FEATURES (STEGO, LOCKDOWN, DECOY, BURN)
-// ══════════════════════════════════════════════════════════════════
 
 // Steganography Toggle
 function toggleStegoInput() {
@@ -1146,70 +1836,18 @@ function toggleStegoInput() {
   }
 }
 
-// Decoy Vault / Master Authentication
-let isDecoyVault = false;
-
-// Convert plaintext to SHA-256 Hash
-async function getSHA256Hash(text) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function authMaster() {
-  const pwd = (document.getElementById('masterPassword').value || '').trim().toLowerCase();
-  const err = document.getElementById('masterAuthError');
-  if (!pwd) {
-    err.style.display = 'block';
-    return;
-  }
-  // Wait for the hash computation
-  const pwdHash = await getSHA256Hash(pwd);
-
-  // 'decoy' hash: 43c7bda7482f5b451cff721a329cd5dbb8a0ce51152a55de0df30b5364175de8
-  // 'admin' hash: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
-  
-  if (pwdHash === '43c7bda7482f5b451cff721a329cd5dbb8a0ce51152a55de0df30b5364175de8') {
-    // Load Plausible Deniability State
-    isDecoyVault = true;
-    document.getElementById('masterLoginOverlay').classList.remove('open');
-    populateDecoyVault();
-    generateMockCase('Decoy Vault Accessed', 'Low', 'Active');
-  } else if (pwdHash === '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918') {
-    // Normal Secure State
-    isDecoyVault = false;
-    document.getElementById('masterLoginOverlay').classList.remove('open');
-    generateMockCase('Master Vault Mount', 'Low', 'Resolved');
-  } else {
-    err.style.display = 'block';
-  }
-}
-
-function populateDecoyVault() {
-  // Clear normal VFS and inject dummy files to fake out attackers
-  const vfs = document.getElementById('fwFilesContainer');
-  if(vfs) {
-    vfs.innerHTML = `
-      <div class="mini-file-item"><svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" fill="rgba(168,85,247,0.3)" stroke="rgba(168,85,247,0.7)" stroke-width="1.5"/><path d="M12 2v6h6" stroke="rgba(168,85,247,0.7)" stroke-width="1.5"/></svg><span>budget_2020.xls</span></div>
-      <div class="mini-file-item"><svg width="20" height="24" viewBox="0 0 20 24" fill="none"><path d="M12 2H4C2.9 2 2 2.9 2 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" fill="rgba(99,102,241,0.3)" stroke="rgba(99,102,241,0.7)" stroke-width="1.5"/><path d="M12 2v6h6" stroke="rgba(99,102,241,0.7)" stroke-width="1.5"/></svg><span>vacation_photos.zip</span></div>
-    `;
-  }
-}
-
 // Panic Button / Lockdown
 function triggerLockdown() {
   const overlay = document.getElementById('lockdownOverlay');
-  if(overlay) {
+  if (overlay) {
     overlay.style.display = 'flex';
     document.getElementById('rescuePassword').value = '';
     document.getElementById('rescueError').style.display = 'none';
     generateMockCase('EMERGENCY LOCKDOWN TRIGGERED', 'Critical', 'Active');
     
-    // Simulate wiping the filesystem from memory
-    const vfs = document.getElementById('fwFilesContainer');
-    if(vfs) vfs.innerHTML = ''; 
+    // Wipe files from virtual explorer view
+    const container = document.getElementById('fwFilesContainer');
+    if (container) container.innerHTML = '';
   }
 }
 
@@ -1219,6 +1857,7 @@ function liftLockdown() {
   if (pwd === 'rescue') {
     document.getElementById('lockdownOverlay').style.display = 'none';
     generateMockCase('Lockdown Lifted', 'Medium', 'Resolved');
+    fwRenderFiles();
   } else {
     err.style.display = 'block';
   }
