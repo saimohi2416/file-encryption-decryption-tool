@@ -381,3 +381,71 @@
 .sv-chatbot-bubble h3:first-child {
   margin-top: 0;
 }
+
+/* Settings Toggle & Panel */
+.sv-chatbot-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sv-chatbot-settings-panel {
+  background: rgba(15, 23, 42, 0.98);
+  border-bottom: 1px solid var(--chat-border);
+  padding: 14px 20px;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  animation: sv-panel-slide 0.2s ease-out forwards;
+}
+.sv-chatbot-settings-panel.active {
+  display: flex;
+}
+@keyframes sv-panel-slide {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.sv-chatbot-settings-label {
+  font-size: 11px;
+  color: var(--chat-accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.sv-chatbot-settings-row {
+  display: flex;
+  gap: 8px;
+}
+.sv-chatbot-settings-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--chat-text);
+  font-size: 12px;
+  outline: none;
+}
+.sv-chatbot-settings-input:focus {
+  border-color: var(--chat-primary);
+}
+.sv-chatbot-settings-save-btn {
+  background: var(--chat-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.sv-chatbot-settings-save-btn:hover {
+  background: #4f46e5;
+}
+.sv-chatbot-settings-desc {
+  font-size: 10px;
+  color: var(--chat-text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+

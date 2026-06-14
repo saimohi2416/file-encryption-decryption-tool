@@ -1835,11 +1835,17 @@ async function sendAiMessage() {
   chat.scrollTop = chat.scrollHeight;
 
   try {
+    const localKey = localStorage.getItem('sv_gemini_api_key');
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    if (localKey) {
+      headers['X-Gemini-Key'] = localKey;
+    }
+
     const response = await fetch('/api/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: headers,
       body: JSON.stringify({
         messages: copilotHistory
       })

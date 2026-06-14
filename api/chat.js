@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid request: messages array is required.' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || req.headers['x-gemini-key'];
 
   if (!apiKey) {
     // Return a smart response explaining how to configure the API key, acting as Demo Mode

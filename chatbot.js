@@ -99,12 +99,30 @@ Provide precise, brief, professional, and helpful replies. Mention the client-si
             <span class="sv-chatbot-subtitle">Customer Service Online</span>
           </div>
         </div>
-        <button class="sv-chatbot-close-btn" id="svChatClose" title="Minimize Chat">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <div class="sv-chatbot-header-controls">
+          <button class="sv-chatbot-close-btn" id="svChatSettings" title="API Key Settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+          <button class="sv-chatbot-close-btn" id="svChatClose" title="Minimize Chat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Settings Panel -->
+      <div class="sv-chatbot-settings-panel" id="svSettingsPanel">
+        <div class="sv-chatbot-settings-label">Local Gemini API Key</div>
+        <div class="sv-chatbot-settings-row">
+          <input type="password" class="sv-chatbot-settings-input" id="svApiKeyInput" placeholder="Enter Gemini API key..." autocomplete="off" />
+          <button class="sv-chatbot-settings-save-btn" id="svSaveSettingsBtn">Save</button>
+        </div>
+        <p class="sv-chatbot-settings-desc">Stored locally in your browser context. Proxy requests pass it via HTTPS to Vercel and then to Google APIs.</p>
       </div>
       
       <!-- Messages List -->
@@ -143,19 +161,48 @@ Provide precise, brief, professional, and helpful replies. Mention the client-si
   const launcher = document.getElementById('svChatLauncher');
   const chatWindow = document.getElementById('svChatWindow');
   const closeBtn = document.getElementById('svChatClose');
+  const settingsBtn = document.getElementById('svChatSettings');
+  const settingsPanel = document.getElementById('svSettingsPanel');
+  const apiKeyInput = document.getElementById('svApiKeyInput');
+  const saveSettingsBtn = document.getElementById('svSaveSettingsBtn');
   const messagesList = document.getElementById('svChatMessages');
   const chatInput = document.getElementById('svChatInput');
   const sendBtn = document.getElementById('svChatSend');
+
+  // Load key from localStorage
+  const savedKey = localStorage.getItem('sv_gemini_api_key');
+  if (savedKey) {
+    apiKeyInput.value = savedKey;
+  }
+
+  // Settings Panel Toggle
+  settingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    settingsPanel.classList.toggle('active');
+  });
+
+  // Save Settings
+  saveSettingsBtn.addEventListener('click', () => {
+    const key = apiKeyInput.value.trim();
+    if (key) {
+      localStorage.setItem('sv_gemini_api_key', key);
+      alert('Gemini API Key saved locally!');
+    } else {
+      localStorage.removeItem('sv_gemini_api_key');
+      alert('Local Gemini API Key cleared.');
+    }
+    settingsPanel.classList.remove('active');
+  });
 
   // Toggle Window State
   function toggleChat(forceState) {
     const isActive = forceState !== undefined ? forceState : chatWindow.classList.contains('active');
     if (isActive) {
       chatWindow.classList.remove('active');
+      settingsPanel.classList.remove('active');
     } else {
       chatWindow.classList.add('active');
       chatInput.focus();
-      // Scroll to bottom when opening
       messagesList.scrollTop = messagesList.scrollHeight;
     }
   }
@@ -196,11 +243,17 @@ Provide precise, brief, professional, and helpful replies. Mention the client-si
     const typingIndicator = appendTypingIndicator();
 
     try {
+      const localKey = localStorage.getItem('sv_gemini_api_key');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      if (localKey) {
+        headers['X-Gemini-Key'] = localKey;
+      }
+
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         body: JSON.stringify({
           messages: conversationHistory
         })
