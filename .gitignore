@@ -6,3 +6,4 @@ tests/
 *.enc
 __pycache__/
 *.pyc
+.vercel
