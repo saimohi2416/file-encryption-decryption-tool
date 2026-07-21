@@ -2,9 +2,12 @@ const CACHE_NAME = 'securevault-v1';
 const ASSETS = [
   './',
   './index.html',
+  './splash.html',
   './style.css',
+  './chatbot.css',
   './app.js',
   './crypto.js',
+  './chatbot.js',
   './jszip.min.js',
   './qrious.min.js',
   './icon.svg',

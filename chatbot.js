@@ -263,7 +263,9 @@ Provide precise, brief, professional, and helpful replies. Mention the client-si
       typingIndicator.remove();
 
       if (!response.ok) {
-        throw new Error('API request failed with status: ' + response.status);
+        const errData = await response.json().catch(() => ({}));
+        const errMsg = errData.error || ('API request failed with status: ' + response.status);
+        throw new Error(errMsg);
       }
 
       const data = await response.json();

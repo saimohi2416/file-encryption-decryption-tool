@@ -13,7 +13,7 @@ except ImportError:
     print(" 'cryptography' library not found. Auto-installing...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "cryptography"])
     print(" Installation complete! Restarting...")
-    os.execv(sys.executable, ['python'] + sys.argv)
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM # type: ignore
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC # type: ignore
