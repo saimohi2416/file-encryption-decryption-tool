@@ -3143,3 +3143,17 @@ body {
   color: white;
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
 }
+
+/* Responsive Firewall Rules layout */
+.firewall-rule-layout {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+  .firewall-rule-layout {
+    grid-template-columns: 1fr;
+  }
+}

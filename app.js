@@ -60,7 +60,9 @@ const state = {
   processing: false,
   currentUser: null,         // Logged-in username
   keyFileHash: null,         // ArrayBuffer of keyfile hash
-  db: null                   // IndexedDB instance
+  db: null,                  // IndexedDB instance
+  cloudSync: false,          // MongoDB sync status
+  passwordHash: null         // Cache user password hash for cloud auth
 };
 
 // ── IndexedDB Configuration ──────────────────────────────────────────────────
@@ -414,43 +416,109 @@ async function handleAuthentication() {
     passwordHash = sha256Fallback(password);
   }
 
-  const tx = state.db.transaction('users', currentAuthTab === 'signin' ? 'readonly' : 'readwrite');
-  const store = tx.objectStore('users');
-
-  if (currentAuthTab === 'signin') {
-    const getReq = store.get(username);
-    getReq.onsuccess = () => {
-      const user = getReq.result;
-      if (user && user.passwordHash === passwordHash) {
+  if (state.cloudSync) {
+    if (currentAuthTab === 'signin') {
+      try {
+        const res = await fetch('/api/db-sync?action=signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, passwordHash })
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          showAuthError(errData.error || 'Incorrect username or password.');
+          return;
+        }
+        
+        state.passwordHash = passwordHash;
+        
+        // Save user locally in IndexedDB as well (for offline fallback)
+        const tx = state.db.transaction('users', 'readwrite');
+        const store = tx.objectStore('users');
+        store.put({ username, passwordHash });
+        
         loginUser(username);
-      } else {
-        showAuthError('Incorrect username or password.');
+      } catch (err) {
+        console.error('Cloud login failed:', err);
+        showAuthError('Cloud authentication server error.');
       }
-    };
-    getReq.onerror = () => showAuthError('Authentication error.');
+    } else {
+      // Sign Up
+      if (password !== confirmPassword) {
+        showAuthError('Passwords do not match.');
+        return;
+      }
+      if (password.length < 8) {
+        showAuthError('Password must be at least 8 characters.');
+        return;
+      }
+      try {
+        const res = await fetch('/api/db-sync?action=signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, passwordHash })
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          showAuthError(errData.error || 'Failed to register user.');
+          return;
+        }
+        
+        state.passwordHash = passwordHash;
+        
+        // Save user locally
+        const tx = state.db.transaction('users', 'readwrite');
+        const store = tx.objectStore('users');
+        store.put({ username, passwordHash });
+        
+        loginUser(username);
+      } catch (err) {
+        console.error('Cloud signup failed:', err);
+        showAuthError('Cloud registration server error.');
+      }
+    }
   } else {
-    // Sign Up
-    if (password !== confirmPassword) {
-      showAuthError('Passwords do not match.');
-      return;
-    }
-    if (password.length < 8) {
-      showAuthError('Password must be at least 8 characters.');
-      return;
-    }
+    // Local-only Fallback
+    const tx = state.db.transaction('users', currentAuthTab === 'signin' ? 'readonly' : 'readwrite');
+    const store = tx.objectStore('users');
 
-    const checkReq = store.get(username);
-    checkReq.onsuccess = () => {
-      if (checkReq.result) {
-        showAuthError('Username already exists.');
-      } else {
-        const addReq = store.add({ username, passwordHash });
-        addReq.onsuccess = () => {
+    if (currentAuthTab === 'signin') {
+      const getReq = store.get(username);
+      getReq.onsuccess = () => {
+        const user = getReq.result;
+        if (user && user.passwordHash === passwordHash) {
+          state.passwordHash = passwordHash;
           loginUser(username);
-        };
-        addReq.onerror = () => showAuthError('Failed to register user.');
+        } else {
+          showAuthError('Incorrect username or password.');
+        }
+      };
+      getReq.onerror = () => showAuthError('Authentication error.');
+    } else {
+      // Sign Up
+      if (password !== confirmPassword) {
+        showAuthError('Passwords do not match.');
+        return;
       }
-    };
+      if (password.length < 8) {
+        showAuthError('Password must be at least 8 characters.');
+        return;
+      }
+
+      const checkReq = store.get(username);
+      checkReq.onsuccess = () => {
+        if (checkReq.result) {
+          showAuthError('Username already exists.');
+        } else {
+          const addReq = store.add({ username, passwordHash });
+          addReq.onsuccess = () => {
+            state.passwordHash = passwordHash;
+            loginUser(username);
+          };
+          addReq.onerror = () => showAuthError('Failed to register user.');
+        }
+      };
+    }
   }
 }
 
@@ -463,6 +531,9 @@ function showAuthError(msg) {
 function loginUser(username) {
   state.currentUser = username;
   sessionStorage.setItem('currentUser', username);
+  if (state.passwordHash) {
+    sessionStorage.setItem('currentUserHash', state.passwordHash);
+  }
   
   // Hide Auth screen
   document.getElementById('masterLoginOverlay').classList.remove('open');
@@ -478,13 +549,19 @@ function loginUser(username) {
   generateMockCase(`User ${username} Logged In`, 'Low', 'Resolved');
 
   // Load custom user files & ledger logs
-  fwRenderFiles();
-  initLedgerData();
+  if (state.cloudSync && state.passwordHash) {
+    syncFromCloud(username, state.passwordHash);
+  } else {
+    fwRenderFiles();
+    initLedgerData();
+  }
 }
 
 function logoutUser() {
   state.currentUser = null;
+  state.passwordHash = null;
   sessionStorage.removeItem('currentUser');
+  sessionStorage.removeItem('currentUserHash');
 
   // Show Auth screen
   document.getElementById('masterLoginOverlay').classList.add('open');
@@ -1156,10 +1233,7 @@ function appendLedgerEntry(hash, file, op, size, status, integrityHash) {
   const now = new Date();
   const time = now.toISOString().replace('T', ' ').substring(0, 19);
 
-  const tx = state.db.transaction('ledger', 'readwrite');
-  const store = tx.objectStore('ledger');
-  
-  store.add({
+  const entry = {
     username: state.currentUser,
     txHash: hash,
     timestamp: time,
@@ -1168,7 +1242,15 @@ function appendLedgerEntry(hash, file, op, size, status, integrityHash) {
     size: size,
     status: status,
     sha256: integrityHash || 'N/A'
-  });
+  };
+
+  const tx = state.db.transaction('ledger', 'readwrite');
+  const store = tx.objectStore('ledger');
+  store.add(entry);
+
+  if (state.cloudSync) {
+    syncAddLedger(entry);
+  }
 }
 
 function initLedgerData() {
@@ -1218,6 +1300,9 @@ function clearLedgerHistory() {
       }
       cursor.continue();
     } else {
+      if (state.cloudSync) {
+        syncClearLedger();
+      }
       initLedgerData();
       addLog('Ledger history cleared successfully.', 'success');
     }
@@ -1561,17 +1646,21 @@ function handleDrop(e) {
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize DB
   initDatabase().then(() => {
-    // Check session
-    const savedUser = sessionStorage.getItem('currentUser');
-    if (savedUser) {
-      loginUser(savedUser);
-    } else {
-      // Force Login Overlay
-      const overlay = document.getElementById('masterLoginOverlay');
-      overlay.classList.add('open');
-      overlay.style.display = 'flex';
-      switchAuthTab('signin');
-    }
+    checkDBStatus().then(() => {
+      // Check session
+      const savedUser = sessionStorage.getItem('currentUser');
+      const savedHash = sessionStorage.getItem('currentUserHash');
+      if (savedUser) {
+        state.passwordHash = savedHash;
+        loginUser(savedUser);
+      } else {
+        // Force Login Overlay
+        const overlay = document.getElementById('masterLoginOverlay');
+        overlay.classList.add('open');
+        overlay.style.display = 'flex';
+        switchAuthTab('signin');
+      }
+    });
   });
 
   const splash = document.getElementById('splashScreen');
@@ -1922,6 +2011,9 @@ function saveFileToVirtualFS(file) {
 
     store.add(entry).onsuccess = () => {
       addLog(`Imported file to Virtual Workspace: ${file.name}`, 'success');
+      if (state.cloudSync) {
+        syncSaveFile(entry);
+      }
       fwRenderFiles();
       fwState.pendingRealFile = null;
       fwUpdateStatus();
@@ -1989,43 +2081,374 @@ function switchTab(tabId, e) {
   if (tabId === 'ledger') initLedgerData();
 }
 
-function initFirewallData() {
+let firewallPollInterval = null;
+let fallbackInterval = null;
+
+async function initFirewallData() {
   const tbody = document.getElementById('firewallTableBody');
-  if (!tbody || tbody.children.length > 0) return;
+  if (!tbody) return;
 
-  const connections = [
-    { proto: 'TCP', local: '192.168.1.105:443', foreign: '104.21.45.120:443', state: 'ESTABLISHED', action: 'ALLOW' },
-    { proto: 'TCP', local: '192.168.1.105:22', foreign: '45.33.22.11:54321', state: 'SYN_RECV', action: 'BLOCK' },
-    { proto: 'UDP', local: '0.0.0.0:53', foreign: '8.8.8.8:53', state: 'LISTENING', action: 'ALLOW' },
-    { proto: 'TCP', local: '127.0.0.1:8080', foreign: '127.0.0.1:52134', state: 'ESTABLISHED', action: 'ALLOW' },
-    { proto: 'TCP', local: '192.168.1.105:80', foreign: '185.15.22.1:80', state: 'TIME_WAIT', action: 'DROP' }
-  ];
+  try {
+    const res = await fetch('/api/firewall/status');
+    if (!res.ok) throw new Error('API status not OK');
+    const data = await res.json();
+    
+    updateFirewallUI(data);
+    startFirewallUpdates(true);
+  } catch (err) {
+    console.warn("Failed to fetch firewall status from backend, running in static mode.", err);
+    
+    // Initialize LocalStorage state if empty
+    if (!localStorage.getItem('fw_block_all')) {
+      localStorage.setItem('fw_block_all', 'true');
+    }
+    if (!localStorage.getItem('fw_rules')) {
+      localStorage.setItem('fw_rules', JSON.stringify({}));
+    }
+    if (!localStorage.getItem('fw_connections')) {
+      const defaultConns = [
+        { proto: 'TCP', local: '192.168.1.105:8000', foreign: '127.0.0.1:54321', state: 'ESTABLISHED', action: 'ALLOW' }
+      ];
+      localStorage.setItem('fw_connections', JSON.stringify(defaultConns));
+    }
+    if (!localStorage.getItem('fw_incidents')) {
+      localStorage.setItem('fw_incidents', JSON.stringify([]));
+    }
+    
+    const blockAll = localStorage.getItem('fw_block_all') !== 'false';
+    const rules = JSON.parse(localStorage.getItem('fw_rules') || '{}');
+    const connections = JSON.parse(localStorage.getItem('fw_connections') || '[]');
+    const incidents = JSON.parse(localStorage.getItem('fw_incidents') || '[]');
+    
+    updateFirewallUI({
+      block_third_parties: blockAll,
+      rules: rules,
+      connections: connections,
+      incidents: incidents
+    });
+    
+    startFirewallUpdates(false);
+  }
+}
 
-  connections.forEach(c => {
+function updateFirewallUI(data) {
+  // Update Checkbox
+  const checkbox = document.getElementById('blockAllThirdParties');
+  if (checkbox) {
+    checkbox.checked = data.block_third_parties;
+  }
+  
+  // Render Connections Log
+  const tbody = document.getElementById('firewallTableBody');
+  if (tbody) {
+    tbody.innerHTML = '';
+    const conns = data.connections.length > 0 ? data.connections : [
+      { proto: 'TCP', local: '127.0.0.1:8000', foreign: '127.0.0.1:52134', state: 'ESTABLISHED', action: 'ALLOW' }
+    ];
+    conns.forEach(c => {
+      const tr = document.createElement('tr');
+      const badge = c.action === 'ALLOW' ? 'bg-success-subtle' : 'bg-danger-subtle';
+      tr.innerHTML = `
+        <td>${c.proto}</td>
+        <td style="font-family:monospace; color:var(--text);">${c.local}</td>
+        <td style="font-family:monospace; color:var(--text-muted);">${c.foreign}</td>
+        <td>${c.state}</td>
+        <td><span class="badge-status ${badge}">${c.action}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+  
+  // Render Rules list
+  renderFirewallRules(data.rules);
+  
+  // Update Threat Count Card
+  const tCount = document.getElementById('threatCount');
+  if (tCount && data.incidents) {
+    tCount.textContent = (1248 + data.incidents.length).toLocaleString();
+  }
+}
+
+function renderFirewallRules(rules) {
+  const rulesTbody = document.getElementById('firewallRulesTableBody');
+  if (!rulesTbody) return;
+  
+  rulesTbody.innerHTML = '';
+  const ips = Object.keys(rules || {});
+  
+  if (ips.length === 0) {
+    rulesTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); font-style:italic;">No custom rules configured.</td></tr>`;
+    return;
+  }
+  
+  ips.forEach(ip => {
+    const action = rules[ip];
     const tr = document.createElement('tr');
-    const badge = c.action === 'ALLOW' ? 'bg-success-subtle' : 'bg-danger-subtle';
+    const badge = action === 'ALLOW' ? 'bg-success-subtle' : 'bg-danger-subtle';
     tr.innerHTML = `
-      <td>${c.proto}</td>
-      <td style="font-family:monospace; color:var(--text);">${c.local}</td>
-      <td style="font-family:monospace; color:var(--text-muted);">${c.foreign}</td>
-      <td>${c.state}</td>
-      <td><span class="badge-status ${badge}">${c.action}</span></td>
+      <td style="font-family:monospace; color:var(--text); font-weight:500;">${ip}</td>
+      <td><span class="badge-status ${badge}">${action}</span></td>
+      <td style="text-align: right; padding-right: 24px;">
+        <button class="action-btn-sm" style="background:rgba(239, 68, 68, 0.1); border-color:var(--danger); color:var(--danger); padding:4px 10px; font-size:11px;" onclick="deleteFirewallRule('${ip}')">Delete</button>
+      </td>
     `;
-    tbody.appendChild(tr);
+    rulesTbody.appendChild(tr);
   });
 }
 
+async function toggleBlockThirdParties(blocked) {
+  try {
+    const res = await fetch('/api/firewall/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ block: blocked })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      initFirewallData();
+    } else {
+      throw new Error('API response error');
+    }
+  } catch (err) {
+    // Fallback static update
+    localStorage.setItem('fw_block_all', blocked.toString());
+    initFirewallData();
+  }
+}
+
+async function addFirewallRule() {
+  const ipInput = document.getElementById('fwIpInput');
+  const actionSelect = document.getElementById('fwActionInput');
+  if (!ipInput || !actionSelect) return;
+  
+  const ip = ipInput.value.trim();
+  const action = actionSelect.value;
+  
+  if (!ip) {
+    alert("Please enter a valid IP address.");
+    return;
+  }
+  
+  // Simple IP regex validation (IPv4 or IPv6)
+  const ipv4Regex = /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$/;
+  const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
+  
+  if (!ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
+    alert("Please enter a valid IPv4 or IPv6 address.");
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/firewall/rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip, action })
+    });
+    if (res.ok) {
+      ipInput.value = '';
+      initFirewallData();
+    } else {
+      throw new Error('API response error');
+    }
+  } catch (err) {
+    // Fallback static
+    const rules = JSON.parse(localStorage.getItem('fw_rules') || '{}');
+    rules[ip] = action;
+    localStorage.setItem('fw_rules', JSON.stringify(rules));
+    ipInput.value = '';
+    initFirewallData();
+  }
+}
+
+async function deleteFirewallRule(ip) {
+  try {
+    const res = await fetch('/api/firewall/rules/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip })
+    });
+    if (res.ok) {
+      initFirewallData();
+    } else {
+      throw new Error('API response error');
+    }
+  } catch (err) {
+    // Fallback static
+    const rules = JSON.parse(localStorage.getItem('fw_rules') || '{}');
+    if (rules[ip]) {
+      delete rules[ip];
+      localStorage.setItem('fw_rules', JSON.stringify(rules));
+    }
+    initFirewallData();
+  }
+}
+
+function startFirewallUpdates(isLive) {
+  if (firewallPollInterval) clearInterval(firewallPollInterval);
+  if (fallbackInterval) clearInterval(fallbackInterval);
+  
+  if (isLive) {
+    firewallPollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/firewall/status');
+        if (res.ok) {
+          const data = await res.json();
+          updateFirewallUI(data);
+          
+          // Sync with Cases if cases are open
+          const casesTbody = document.getElementById('casesTableBody');
+          if (casesTbody && data.incidents) {
+            data.incidents.forEach(inc => {
+              injectIncidentToCasesTable(inc);
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Lost connection to live firewall API.");
+      }
+    }, 5000);
+  } else {
+    startFallbackSimulation();
+  }
+}
+
+function startFallbackSimulation() {
+  if (fallbackInterval) return;
+  
+  fallbackInterval = setInterval(() => {
+    const thirdPartyIps = ['192.168.1.45', '10.0.0.12', '172.16.0.85', '84.22.110.5', '192.168.1.115'];
+    const randomIp = thirdPartyIps[Math.floor(Math.random() * thirdPartyIps.length)];
+    
+    const rules = JSON.parse(localStorage.getItem('fw_rules') || '{}');
+    const blockAll = localStorage.getItem('fw_block_all') !== 'false';
+    
+    let action = 'ALLOW';
+    if (rules[randomIp]) {
+      action = rules[randomIp];
+    } else if (blockAll) {
+      action = 'BLOCK';
+    }
+    
+    const localIp = '192.168.1.105:8000';
+    const connections = JSON.parse(localStorage.getItem('fw_connections') || '[]');
+    const newConn = {
+      proto: 'TCP',
+      local: localIp,
+      foreign: `${randomIp}:${Math.floor(Math.random() * 60000) + 1024}`,
+      state: action === 'ALLOW' ? 'ESTABLISHED' : 'BLOCKED',
+      action: action
+    };
+    connections.unshift(newConn);
+    if (connections.length > 50) connections.pop();
+    localStorage.setItem('fw_connections', JSON.stringify(connections));
+    
+    if (action === 'BLOCK') {
+      const incidents = JSON.parse(localStorage.getItem('fw_incidents') || '[]');
+      let nextId = parseInt(localStorage.getItem('fw_incident_counter') || '6000');
+      const now = new Date();
+      const timeStr = now.toISOString().replace('T', ' ').substring(0, 19);
+      
+      const newInc = {
+        id: `#SEC-${nextId}`,
+        time: timeStr,
+        type: `Unauthorized Access Attempt (Firewall Blocked - ${randomIp})`,
+        severity: 'High',
+        status: 'Blocked'
+      };
+      incidents.unshift(newInc);
+      localStorage.setItem('fw_incident_counter', (nextId + 1).toString());
+      localStorage.setItem('fw_incidents', JSON.stringify(incidents));
+      
+      // Update UI threat count immediately if present
+      const tCount = document.getElementById('threatCount');
+      if (tCount) {
+        tCount.textContent = (1248 + incidents.length).toLocaleString();
+      }
+      
+      // Append to cases table if open
+      injectIncidentToCasesTable(newInc);
+    }
+    
+    // Rerender table if firewall tab is active
+    const tbody = document.getElementById('firewallTableBody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      connections.forEach(c => {
+        const tr = document.createElement('tr');
+        const badge = c.action === 'ALLOW' ? 'bg-success-subtle' : 'bg-danger-subtle';
+        tr.innerHTML = `
+          <td>${c.proto}</td>
+          <td style="font-family:monospace; color:var(--text);">${c.local}</td>
+          <td style="font-family:monospace; color:var(--text-muted);">${c.foreign}</td>
+          <td>${c.state}</td>
+          <td><span class="badge-status ${badge}">${c.action}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  }, 5000);
+}
+
 let caseCounter = 1042;
-function initCasesData() {
+async function initCasesData() {
   const tbody = document.getElementById('casesTableBody');
   if (!tbody || tbody.children.length > 0) return;
+  
   generateMockCase('SQL Injection Attempt', 'High', 'Resolved');
   generateMockCase('Unauthorized Port Scan', 'Medium', 'Blocked');
   generateMockCase('Failed SSH Login', 'Low', 'Investigating');
+
+  // Then fetch real firewall incidents if live, or local storage incidents
+  try {
+    const res = await fetch('/api/firewall/status');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.incidents && data.incidents.length > 0) {
+        data.incidents.forEach(inc => {
+          injectIncidentToCasesTable(inc);
+        });
+      }
+    } else {
+      const localIncidents = JSON.parse(localStorage.getItem('fw_incidents') || '[]');
+      localIncidents.forEach(inc => {
+        injectIncidentToCasesTable(inc);
+      });
+    }
+  } catch (err) {
+    const localIncidents = JSON.parse(localStorage.getItem('fw_incidents') || '[]');
+    localIncidents.forEach(inc => {
+      injectIncidentToCasesTable(inc);
+    });
+  }
+}
+
+function injectIncidentToCasesTable(inc) {
+  const tbody = document.getElementById('casesTableBody');
+  if (!tbody) return;
+  
+  // Avoid duplicate display by checking if case ID already exists
+  const existing = Array.from(tbody.querySelectorAll('td')).some(td => td.textContent === inc.id);
+  if (existing) return;
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="font-family:monospace; font-weight:bold;">${inc.id}</td>
+    <td style="color:var(--text-muted);">${inc.time}</td>
+    <td>${inc.type}</td>
+    <td><span class="badge-status bg-danger-subtle">${inc.severity}</span></td>
+    <td><span class="badge-status bg-success-subtle">${inc.status}</span></td>
+  `;
+  
+  if (tbody.firstChild) {
+    tbody.insertBefore(tr, tbody.firstChild);
+  } else {
+    tbody.appendChild(tr);
+  }
 }
 
 function generateMockCase(type = null, severity = null, status = null) {
   const tbody = document.getElementById('casesTableBody');
+
   if (!tbody) return;
   
   const types = ['DDoS Attempt (Threat Intel Blocked)', 'Malware Signature Match', 'Corporate Security Policy Violation', 'Brute Force Attack', 'Data Exfiltration Attempt'];
@@ -2181,4 +2604,224 @@ function liftLockdown() {
   } else {
     err.style.display = 'block';
   }
+}
+
+// ── MongoDB Database Cloud Sync Functions ───────────────────────────────────
+
+async function checkDBStatus() {
+  const indicator = document.getElementById('dbStatusIndicator');
+  try {
+    const res = await fetch('/api/db-sync?action=status');
+    if (!res.ok) throw new Error('API status check failed');
+    const data = await res.json();
+    if (data.configured && data.connected) {
+      state.cloudSync = true;
+      if (indicator) {
+        indicator.innerHTML = `<span class="pulse-dot" style="background:#10b981; width:8px; height:8px; box-shadow: 0 0 8px #10b981;"></span> DB: MongoDB Cloud (Synced)`;
+        indicator.title = "Connected to MongoDB Cloud database. Your profiles, virtual files and ledger logs are synced.";
+      }
+      return true;
+    } else {
+      state.cloudSync = false;
+      if (indicator) {
+        indicator.innerHTML = `<span class="pulse-dot" style="background:#f59e0b; width:8px; height:8px; animation: none;"></span> DB: Local (IndexedDB)`;
+        indicator.title = data.configured 
+          ? "MongoDB is configured but connection failed. Falling back to local database."
+          : "MongoDB is not configured. Add MONGODB_URI to Vercel to enable Cloud Sync.";
+      }
+      return false;
+    }
+  } catch (e) {
+    console.warn("DB status check failed:", e);
+    state.cloudSync = false;
+    if (indicator) {
+      indicator.innerHTML = `<span class="pulse-dot" style="background:#ef4444; width:8px; height:8px; animation: none;"></span> DB: Status Error`;
+      indicator.title = "Failed to communicate with DB sync API. Running in local-only mode.";
+    }
+    return false;
+  }
+}
+
+async function syncFromCloud(username, passwordHash) {
+  try {
+    addLog('Syncing database with MongoDB Cloud...', 'info');
+    const res = await fetch('/api/db-sync?action=get_data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, passwordHash })
+    });
+    if (!res.ok) {
+      throw new Error('Failed to pull data from cloud');
+    }
+    const data = await res.json();
+    const { ledger, files } = data;
+
+    // 1. Sync virtual files into local IndexedDB
+    const txFiles = state.db.transaction('virtual_files', 'readwrite');
+    const storeFiles = txFiles.objectStore('virtual_files');
+    
+    const localKeysToDelete = [];
+    const cursorReq = storeFiles.openCursor();
+    cursorReq.onsuccess = (e) => {
+      const cursor = e.target.result;
+      if (cursor) {
+        if (cursor.value.username === username) {
+          localKeysToDelete.push(cursor.primaryKey);
+        }
+        cursor.continue();
+      } else {
+        const deleteTx = state.db.transaction('virtual_files', 'readwrite');
+        const deleteStore = deleteTx.objectStore('virtual_files');
+        localKeysToDelete.forEach(k => deleteStore.delete(k));
+        
+        files.forEach(f => {
+          let content = f.content;
+          if (f.type !== 'folder' && f.type !== 'text' && f.content && typeof f.content === 'string') {
+            content = base64ToArrayBuffer(f.content);
+          }
+          deleteStore.add({
+            username: f.username,
+            name: f.name,
+            type: f.type,
+            size: f.size,
+            date: f.date,
+            path: f.path,
+            content: content,
+            mimeType: f.mimeType
+          });
+        });
+        
+        deleteTx.oncomplete = () => {
+          fwRenderFiles();
+          addLog('Virtual Workspace synced with cloud.', 'success');
+        };
+      }
+    };
+
+    // 2. Sync ledger entries into local IndexedDB
+    const txLedger = state.db.transaction('ledger', 'readwrite');
+    const storeLedger = txLedger.objectStore('ledger');
+    
+    const ledgerKeysToDelete = [];
+    const ledgerCursorReq = storeLedger.openCursor();
+    ledgerCursorReq.onsuccess = (e) => {
+      const cursor = e.target.result;
+      if (cursor) {
+        if (cursor.value.username === username) {
+          ledgerKeysToDelete.push(cursor.primaryKey);
+        }
+        cursor.continue();
+      } else {
+        const deleteTx = state.db.transaction('ledger', 'readwrite');
+        const deleteStore = deleteTx.objectStore('ledger');
+        ledgerKeysToDelete.forEach(k => deleteStore.delete(k));
+        
+        ledger.forEach(item => {
+          deleteStore.add(item);
+        });
+        
+        deleteTx.oncomplete = () => {
+          initLedgerData();
+          addLog('Cryptographic Ledger synced with cloud.', 'success');
+        };
+      }
+    };
+
+  } catch (err) {
+    console.error('Cloud sync error:', err);
+    addLog('Could not sync with MongoDB. Running with local cache.', 'warning');
+    fwRenderFiles();
+    initLedgerData();
+  }
+}
+
+async function syncSaveFile(entry) {
+  if (!state.cloudSync || !state.currentUser || !state.passwordHash) return;
+  try {
+    const base64Content = arrayBufferToBase64(entry.content);
+    const filePayload = {
+      name: entry.name,
+      type: entry.type,
+      size: entry.size,
+      date: entry.date,
+      path: entry.path,
+      content: base64Content,
+      mimeType: entry.mimeType
+    };
+    
+    const res = await fetch('/api/db-sync?action=save_file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: state.currentUser,
+        passwordHash: state.passwordHash,
+        file: filePayload
+      })
+    });
+    if (!res.ok) throw new Error('Cloud save failed');
+  } catch (e) {
+    console.error('Failed to sync save file to MongoDB:', e);
+  }
+}
+
+async function syncAddLedger(entry) {
+  if (!state.cloudSync || !state.currentUser || !state.passwordHash) return;
+  try {
+    const res = await fetch('/api/db-sync?action=add_ledger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: state.currentUser,
+        passwordHash: state.passwordHash,
+        entry: entry
+      })
+    });
+    if (!res.ok) throw new Error('Cloud ledger add failed');
+  } catch (e) {
+    console.error('Failed to sync ledger entry to MongoDB:', e);
+  }
+}
+
+async function syncClearLedger() {
+  if (!state.cloudSync || !state.currentUser || !state.passwordHash) return;
+  try {
+    const res = await fetch('/api/db-sync?action=clear_ledger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: state.currentUser,
+        passwordHash: state.passwordHash
+      })
+    });
+    if (!res.ok) throw new Error('Cloud ledger clear failed');
+  } catch (e) {
+    console.error('Failed to sync ledger clear to MongoDB:', e);
+  }
+}
+
+function arrayBufferToBase64(buffer) {
+  if (!buffer) return null;
+  if (typeof buffer === 'string') return buffer;
+  let arrayBuffer = buffer;
+  if (ArrayBuffer.isView(buffer)) {
+    arrayBuffer = buffer.buffer;
+  }
+  let binary = '';
+  const bytes = new Uint8Array(arrayBuffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+  if (!base64) return new ArrayBuffer(0);
+  const binaryString = window.atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
 }
