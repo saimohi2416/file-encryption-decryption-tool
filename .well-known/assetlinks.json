@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.securevault.ai.app",
+      "sha256_cert_fingerprints": [
+        "22:ED:4F:15:8D:D2:75:DC:F1:1A:0B:B3:62:C0:3B:63:1A:28:AE:56:EC:5F:CF:98:49:CA:03:42:70:15:D4:7D"
+      ]
+    }
+  }
+]
