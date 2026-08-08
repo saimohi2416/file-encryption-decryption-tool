@@ -1,0 +1,45 @@
+{
+  "packageId": "com.securevault.ai.app",
+  "host": "securevault-ai-two.vercel.app",
+  "name": "SecureVault AI",
+  "launcherName": "SecureVault",
+  "display": "standalone",
+  "themeColor": "#0D1117",
+  "themeColorDark": "#000000",
+  "navigationColor": "#0D1117",
+  "navigationColorDark": "#0D1117",
+  "navigationDividerColor": "#0D1117",
+  "navigationDividerColorDark": "#0D1117",
+  "backgroundColor": "#0D1117",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://raw.githubusercontent.com/saimohi2416/file-encryption-decryption-tool/main/icon.svg",
+  "maskableIconUrl": "https://raw.githubusercontent.com/saimohi2416/file-encryption-decryption-tool/main/icon.svg",
+  "signingKey": {
+    "path": "..\\release-key.jks",
+    "alias": "securevault-alias"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 2,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": "true",
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "minSdkVersion": 21,
+  "orientation": "default",
+  "fingerprints": [
+    {
+      "sha256Fingerprint": "22:ED:4F:15:8D:D2:75:DC:F1:1A:0B:B3:62:C0:3B:63:1A:28:AE:56:EC:5F:CF:98:49:CA:03:42:70:15:D4:7D"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}

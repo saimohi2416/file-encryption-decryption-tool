@@ -78,11 +78,13 @@ module.exports = async function handler(req, res) {
     const usersCol = db.collection('users');
     const ledgerCol = db.collection('ledger');
     const filesCol = db.collection('virtual_files');
+    const auditCol = db.collection('audit_logs');
 
     // Ensure Indexes for performance and constraints
     await usersCol.createIndex({ username: 1 }, { unique: true });
     await filesCol.createIndex({ username: 1, path: 1, name: 1 });
     await ledgerCol.createIndex({ username: 1 });
+    await auditCol.createIndex({ username: 1, timestamp: -1 });
 
     // 2. SignUp action
     if (action === 'signup') {
@@ -90,7 +92,13 @@ module.exports = async function handler(req, res) {
       if (existingUser) {
         return res.status(400).json({ error: 'Username already exists.' });
       }
-      await usersCol.insertOne({ username, passwordHash });
+      await usersCol.insertOne({
+        username,
+        passwordHash,
+        mfaEnabled: false,
+        mfaSecret: null,
+        createdAt: new Date().toISOString()
+      });
       return res.status(200).json({ success: true });
     }
 
@@ -100,7 +108,11 @@ module.exports = async function handler(req, res) {
       if (!user || user.passwordHash !== passwordHash) {
         return res.status(401).json({ error: 'Incorrect username or password.' });
       }
-      return res.status(200).json({ success: true });
+      return res.status(200).json({
+        success: true,
+        mfaRequired: !!user.mfaEnabled,
+        mfaSecret: user.mfaEnabled ? user.mfaSecret : null
+      });
     }
 
     // 4. Authenticate credentials for all subsequent data modification/retrieval actions
@@ -109,27 +121,51 @@ module.exports = async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized access.' });
     }
 
-    // 5. Data Actions
+    // 5. MFA Management
+    if (action === 'update_mfa') {
+      const { mfaEnabled, mfaSecret } = body;
+      await usersCol.updateOne(
+        { username },
+        { $set: { mfaEnabled: !!mfaEnabled, mfaSecret: mfaSecret || null } }
+      );
+      return res.status(200).json({ success: true, mfaEnabled: !!mfaEnabled });
+    }
+
+    // 6. Data Actions
     
-    // Get all virtual files and ledger logs for user
+    // Get all virtual files, ledger logs, and audit logs for user
     if (action === 'get_data') {
       const ledger = await ledgerCol.find({ username }).toArray();
       const files = await filesCol.find({ username }).toArray();
+      const auditLogs = await auditCol.find({ username }).sort({ timestamp: -1 }).limit(100).toArray();
       
-      // Clean MongoDB custom objects (e.g. _id) before returning
-      const cleanLedger = ledger.map(item => {
-        const { _id, ...rest } = item;
-        return rest;
-      });
-      const cleanFiles = files.map(item => {
-        const { _id, ...rest } = item;
-        return rest;
-      });
+      const cleanLedger = ledger.map(item => { const { _id, ...rest } = item; return rest; });
+      const cleanFiles = files.map(item => { const { _id, ...rest } = item; return rest; });
+      const cleanAudit = auditLogs.map(item => { const { _id, ...rest } = item; return rest; });
 
       return res.status(200).json({
         ledger: cleanLedger,
-        files: cleanFiles
+        files: cleanFiles,
+        auditLogs: cleanAudit,
+        mfaEnabled: !!user.mfaEnabled
       });
+    }
+
+    // Add audit log entry (Zero-Knowledge encrypted or structured)
+    if (action === 'add_audit_log') {
+      const { logEntry } = body;
+      if (!logEntry) {
+        return res.status(400).json({ error: 'Invalid log payload.' });
+      }
+      await auditCol.insertOne({
+        username,
+        action: logEntry.action,
+        severity: logEntry.severity || 'info',
+        details: logEntry.details,
+        timestamp: logEntry.timestamp || new Date().toISOString(),
+        ipAddress: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
+      });
+      return res.status(200).json({ success: true });
     }
 
     // Save/Update a virtual file
@@ -149,7 +185,7 @@ module.exports = async function handler(req, res) {
             size: file.size,
             date: file.date,
             path: file.path,
-            content: file.content, // base64 representation of file content
+            content: file.content,
             mimeType: file.mimeType
           } 
         },

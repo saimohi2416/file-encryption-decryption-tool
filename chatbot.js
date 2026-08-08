@@ -271,14 +271,24 @@ Provide precise, brief, professional, and helpful replies. Mention the client-si
       const data = await response.json();
       const botResponse = data.choices?.[0]?.message?.content || 'Sorry, I encountered an error.';
       
+      // Update quota indicator if returned
+      if (data.quota && document.getElementById('auditStatQuota')) {
+        document.getElementById('auditStatQuota').textContent = `${data.quota.remaining}/${data.quota.limit}`;
+      }
+
+      // Log AI Copilot audit event
+      if (typeof window.logAuditEvent === 'function') {
+        window.logAuditEvent('AI Security Query', `Query: "${text.substring(0, 40)}..."`, 'info');
+      }
+
       // Render Bot Message
       appendMessage('system', botResponse);
       
       // Add to History
       conversationHistory.push({ role: 'assistant', content: botResponse });
     } catch (err) {
-      typingIndicator.remove();
-      appendMessage('system', `⚠️ **Error**: Could not reach SecureVault AI. Details: \`${err.message}\`. Please check your connection.`);
+      if (typingIndicator && typingIndicator.parentNode) typingIndicator.remove();
+      appendMessage('system', `⚠️ **Error / Quota Alert**: Could not reach SecureVault AI. Details: \`${err.message}\`. Please check your connection or rate limit.`);
       console.error('Chatbot API Error:', err);
     }
   }

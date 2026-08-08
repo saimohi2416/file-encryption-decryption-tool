@@ -377,6 +377,30 @@ class SecureVaultAPIHandler(SimpleHTTPRequestHandler):
         if not self.check_firewall():
             return
             
+        if self.path == '/favicon.ico':
+            if os.path.exists('icon.svg'):
+                self.send_response(200)
+                self.send_header('Content-Type', 'image/svg+xml')
+                self.end_headers()
+                with open('icon.svg', 'rb') as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(204)
+                self.end_headers()
+            return
+
+        if self.path.startswith('/api/db-sync'):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "configured": False,
+                "connected": False,
+                "message": "Local offline server mode (MongoDB Cloud Sync unavailable locally)"
+            }).encode('utf-8'))
+            return
+
         if self.path == '/api/firewall/status':
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -398,6 +422,12 @@ class SecureVaultAPIHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         if not self.check_firewall():
+            return
+
+        if self.path.startswith('/_vercel/'):
+            self.send_response(204)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
             return
             
         if self.path.startswith('/api/firewall/'):

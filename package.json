@@ -1,6 +1,11 @@
 {
+  "name": "secure-vault-enterprise",
+  "version": "2.0.0",
   "dependencies": {
+    "@simplewebauthn/browser": "^10.0.0",
+    "@simplewebauthn/server": "^10.0.0",
     "mongodb": "^6.3.0",
     "surge": "^0.27.4"
   }
 }
+

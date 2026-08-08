@@ -1331,28 +1331,53 @@
 
   <!-- MFA Setup & Verification Modal -->
   <div class="modal-overlay" id="mfaModal">
-    <div class="modal-card" style="max-width:440px;">
-      <h3 style="font-size:18px; font-weight:800; color:var(--text); margin-bottom:8px;">Multi-Factor Authentication (MFA)</h3>
-      <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">Enhance your vault security with TOTP 2FA or WebAuthn Passkeys.</p>
+    <div class="modal-card" style="max-width:520px;">
+      <h3 style="font-size:18px; font-weight:800; color:var(--text); margin-bottom:4px;">Enterprise Multi-Factor & Hardware Auth</h3>
+      <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">Secure your vault with FIDO2 WebAuthn Passkeys (YubiKey / Touch ID / Face ID) or TOTP 2FA.</p>
       
+      <!-- Hardware Passkeys Section -->
+      <div style="background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2); padding:16px; border-radius:var(--radius); margin-bottom:16px;">
+        <div style="font-weight:700; color:var(--primary-light); font-size:14px; margin-bottom:4px; display:flex; align-items:center; gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Hardware Passkeys & Biometrics (FIDO2 / WebAuthn)
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Register your hardware key, security key, or device biometric authenticator.</p>
+        
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <button class="open-folder-btn" style="flex:1; background:var(--primary); font-size:12px; padding:8px;" onclick="registerHardwarePasskey(window.currentUser || 'VaultOwner')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Register Passkey
+          </button>
+          <button class="open-folder-btn" style="flex:1; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); color:#10b981; font-size:12px; padding:8px;" onclick="authenticateWithPasskey(window.currentUser || 'VaultOwner')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Test Passkey Unlock
+          </button>
+        </div>
+
+        <div id="passkeyTableContainer" style="max-height:140px; overflow-y:auto;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
       <div id="mfaSetupView">
-        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); padding:16px; border-radius:var(--radius); margin-bottom:16px; text-align:center;">
-          <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Authenticator Secret Key (TOTP)</div>
-          <div style="font-family:'JetBrains Mono', monospace; font-size:16px; font-weight:700; color:var(--accent); letter-spacing:2px; word-break:break-all;" id="mfaSecretDisplay">------</div>
+        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); padding:12px; border-radius:var(--radius); margin-bottom:12px; text-align:center;">
+          <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Authenticator Secret Key (TOTP)</div>
+          <div style="font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:700; color:var(--accent); letter-spacing:2px; word-break:break-all;" id="mfaSecretDisplay">------</div>
         </div>
 
         <div style="margin-bottom:16px;">
           <label class="section-label-sm" style="margin-bottom:6px; display:block;">Enter 6-Digit TOTP Code to Enable</label>
-          <input type="text" id="mfaVerifyInput" class="password-input" placeholder="000000" maxlength="6" style="width:100%; text-align:center; font-family:'JetBrains Mono', monospace; font-size:18px; letter-spacing:4px;" />
+          <input type="text" id="mfaVerifyInput" class="password-input" placeholder="000000" maxlength="6" style="width:100%; text-align:center; font-family:'JetBrains Mono', monospace; font-size:16px; letter-spacing:4px;" />
         </div>
 
         <div style="display:flex; gap:8px;">
-          <button class="open-folder-btn" style="flex:1; justify-center;" onclick="confirmEnableMFA()">Verify & Enable MFA</button>
+          <button class="open-folder-btn" style="flex:1; justify-content:center;" onclick="confirmEnableMFA()">Verify & Enable MFA</button>
           <button class="modal-close-btn" style="margin-top:0;" onclick="closeMfaModal()">Cancel</button>
         </div>
       </div>
     </div>
   </div>
+
 
   <script src="jszip.min.js"></script>
   <script src="qrious.min.js"></script>

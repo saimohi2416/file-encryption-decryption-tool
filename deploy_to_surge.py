@@ -12,29 +12,36 @@ def random_string(length=10):
 def main():
     print("Initializing deployment engine...")
     
-    # 1. Download Node.js portable zip
-    zip_url = "https://nodejs.org/dist/v20.11.1/node-v20.11.1-win-x64.zip"
-    zip_path = "node-portable.zip"
-    extract_dir = "node-portable"
-    
-    if not os.path.exists(extract_dir):
-        print("Downloading Node.js portable (30MB)... Please wait.")
-        urllib.request.urlretrieve(zip_url, zip_path)
-        print("Extracting Node.js package...")
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(".")
-        # Find the extracted folder and rename it
-        for name in os.listdir("."):
-            if name.startswith("node-") and os.path.isdir(name) and name != extract_dir:
-                os.rename(name, extract_dir)
-                break
-        os.remove(zip_path)
-        print("Node.js portable environment ready.")
-    else:
-        print("Node.js portable environment already exists.")
+    import shutil
+    sys_node = shutil.which("node")
 
-    # Paths to node.exe
-    node_bin = os.path.abspath(os.path.join(extract_dir, "node.exe"))
+    if sys_node:
+        print(f"Using system Node.js environment: {sys_node}")
+        node_bin = sys_node
+    else:
+        # 1. Download Node.js portable zip
+        zip_url = "https://nodejs.org/dist/v20.11.1/node-v20.11.1-win-x64.zip"
+        zip_path = "node-portable.zip"
+        extract_dir = "node-portable"
+        
+        if not os.path.exists(extract_dir):
+            print("Downloading Node.js portable (30MB)... Please wait.")
+            urllib.request.urlretrieve(zip_url, zip_path)
+            print("Extracting Node.js package...")
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(".")
+            # Find the extracted folder and rename it
+            for name in os.listdir("."):
+                if name.startswith("node-") and os.path.isdir(name) and name != extract_dir:
+                    os.rename(name, extract_dir)
+                    break
+            os.remove(zip_path)
+            print("Node.js portable environment ready.")
+        else:
+            print("Node.js portable environment already exists.")
+
+        # Paths to node.exe
+        node_bin = os.path.abspath(os.path.join(extract_dir, "node.exe"))
 
     # Generate temporary credentials
     email = f"securevault-{random_string(6)}@example.com"
