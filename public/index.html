@@ -24,7 +24,7 @@
 <body>
 
   <!-- Insecure Context Warning Banner -->
-  <div id="secureContextWarning" class="secure-context-warning hidden">
+  <div id="secureContextWarning" class="secure-context-warning hidden" style="display: none;">
     <div class="warning-content">
       <div class="warning-icon-wrap">
         <svg viewBox="0 0 24 24" fill="none" class="warning-icon">
@@ -159,6 +159,7 @@
             stroke-linejoin="round" />
         </svg>
         Military-Grade Encryption
+        <span class="active-crypto-badge" title="All cryptographic operations execute 100% locally in your browser using WebCrypto API & Web Workers."><span class="pulse-dot"></span> Active Local Engine</span>
       </div>
       <h1 class="hero-title">
         Encrypt &amp; Decrypt<br />
@@ -604,7 +605,7 @@
           </div>
           <div class="algo-card">
             <div class="algo-label">Iterations</div>
-            <div class="algo-value">310,000</div>
+            <div class="algo-value">600,000</div>
           </div>
           <div class="algo-card">
             <div class="algo-label">Salt Length</div>
@@ -707,7 +708,7 @@
             </svg>
           </div>
           <h3>Key Derivation (PBKDF2)</h3>
-          <p>Your password is run through PBKDF2 with SHA-256 hash function and 310,000 iterations to produce a strong
+          <p>Your password is run through PBKDF2 with SHA-256 hash function and 600,000 iterations to produce a strong
             256-bit AES key.</p>
         </div>
         <div class="how-card">
@@ -768,28 +769,28 @@
   <!-- Tab Content: Firewall -->
   <div id="content-firewall" class="tab-content">
     <div class="module-header">
-      <h2>Enterprise Secure Firewall</h2>
+      <h2>Enterprise Secure Firewall <span class="demo-badge" title="This panel simulates real-time network security monitoring and IP access rules for demonstration purposes.">Simulated / Interactive Demo Module</span></h2>
       <p>Powered by Global Threat Intelligence. Real-time active connection monitoring and intrusion prevention system.</p>
     </div>
     
     <div class="firewall-grid" style="grid-template-columns: repeat(4, 1fr);">
       <div class="fw-stat-card">
-        <div class="fw-stat-title">Inbound Traffic</div>
+        <div class="fw-stat-title">Inbound Traffic <span class="demo-badge-sm" title="Simulated metric">Simulated</span></div>
         <div class="fw-stat-value text-accent">1.2 GB/s</div>
       </div>
       <div class="fw-stat-card">
-        <div class="fw-stat-title">Outbound Traffic</div>
+        <div class="fw-stat-title">Outbound Traffic <span class="demo-badge-sm" title="Simulated metric">Simulated</span></div>
         <div class="fw-stat-value text-primary">450 MB/s</div>
       </div>
       <div class="fw-stat-card">
-        <div class="fw-stat-title">Threat Language Vectors</div>
+        <div class="fw-stat-title">Threat Language Vectors <span class="demo-badge-sm" title="Simulated threat analytics">Simulated</span></div>
         <div class="fw-stat-value" style="font-size: 14px; font-family: monospace; color: #fff;">
           <span style="color:#eab308;">Python 45%</span> | <span style="color:#3b82f6;">C++ 30%</span><br>
           <span style="color:#ef4444;">Rust 15%</span> | <span style="color:#10b981;">JS 10%</span>
         </div>
       </div>
       <div class="fw-stat-card">
-        <div class="fw-stat-title">Blocked Execution Payloads</div>
+        <div class="fw-stat-title">Blocked Execution Payloads <span class="demo-badge-sm" title="Simulated telemetry data">Simulated</span></div>
         <div class="fw-stat-value text-danger" id="threatCount">1,248</div>
       </div>
     </div>
@@ -981,7 +982,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"/></svg>
           Zero-Knowledge Immutable Log
         </div>
-        <h1 class="hero-title">Security Audit <span class="gradient-text">&amp; Event Logs</span></h1>
+        <h1 class="hero-title">Security Audit <span class="gradient-text">&amp; Event Logs</span> <span class="demo-badge" title="Local operational events & simulated security telemetry log.">Local &amp; Simulated Logs</span></h1>
         <p class="hero-subtitle">Comprehensive tracking of logins, cryptographic operations, MFA verifications, and system events.</p>
       </div>
     </div>

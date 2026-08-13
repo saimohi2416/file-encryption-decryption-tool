@@ -1136,6 +1136,14 @@ async function processFile() {
       addLog(`[ZIP] Compression successful. Zipped file size: ${formatBytes(sourceFile.size)}`, 'success');
     }
 
+    const isChkStreaming = document.getElementById('chkStreaming').checked;
+    const isLargeFile = sourceFile && sourceFile.size > 50 * 1024 * 1024;
+    const isStreaming = isChkStreaming || isLargeFile;
+
+    if (isLargeFile && !isChkStreaming) {
+      addLog(`[MEMORY SAFETY] Large file detected (${formatBytes(sourceFile.size)}). Routing via Web Worker chunked stream to prevent memory crashes.`, 'info');
+    }
+
     const outputName = getOutputFilename(sourceFile.name, state.mode);
 
     if (state.mode === 'encrypt') {
@@ -1145,13 +1153,13 @@ async function processFile() {
         const result = await encryptFileStream(sourceFile, {
           password,
           keyFileHash: state.keyFileHash,
-          chunkSize: 1024 * 1024
+          chunkSize: 2 * 1024 * 1024
         }, (phase, msg) => {
           if (phase === 'encrypt') {
             markStepDone(3);
             markStepProcessing(4);
           }
-          addLog(`[STREAM] ${msg}`);
+          addLog(`[STREAM WORKER] ${msg}`);
         }, (pct, detail) => {
           updateProgressBar(pct, detail);
         });
@@ -1698,9 +1706,32 @@ function handleDrop(e) {
   }
 }
 
+// ── Secure Context Handler & FOUC Prevention ───────────────────────────────
+
+function checkSecureContext() {
+  const warningBanner = document.getElementById('secureContextWarning');
+  if (!warningBanner) return;
+
+  const isLocalhost = Boolean(
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === '[::1]'
+  );
+
+  if (typeof window !== 'undefined' && window.isSecureContext === false && !isLocalhost) {
+    warningBanner.style.display = '';
+    warningBanner.classList.remove('hidden');
+  } else {
+    warningBanner.style.display = 'none';
+    warningBanner.classList.add('hidden');
+  }
+}
+
 // ── DOM Init ──────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  checkSecureContext();
+
   // Initialize DB
   initDatabase().then(() => {
     checkDBStatus().then(() => {
