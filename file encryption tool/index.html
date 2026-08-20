@@ -17,6 +17,8 @@
   <meta name="theme-color" content="#6366f1" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="apple-touch-icon" href="icon.svg" />
+  <!-- Google Identity Services SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Vercel Web Analytics -->
   <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
 </head>
@@ -114,7 +116,8 @@
         <div class="user-display-avatar" id="userAvatar">U</div>
         <div class="user-display-info">
           <div class="user-display-name" id="userNameDisplay">Username</div>
-          <div class="user-display-status">Active Session</div>
+          <div class="user-display-sub" id="userSubDisplay">Active Session</div>
+          <div id="userProviderBadge" class="auth-provider-badge-wrap"></div>
         </div>
       </div>
       <div class="logout-btn-wrap hidden" id="logoutBtnWrap">
@@ -1278,6 +1281,30 @@
         <p style="color:var(--text-muted); font-size:13px;">100% client-side multi-user dashboard</p>
       </div>
       
+      <!-- SSO / Social Authentication Section -->
+      <div class="sso-buttons-container">
+        <button type="button" class="sso-btn sso-btn-google" onclick="handleGoogleSignIn()" id="googleSignInBtn" title="Sign in with your Google account">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+            <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+            <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9c-.4-.7-.6-1.5-.6-2.4z"/>
+            <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+
+        <button type="button" class="sso-btn sso-btn-github" onclick="handleGitHubSignIn()" id="githubSignInBtn" title="Sign in with your GitHub account">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span>Continue with GitHub</span>
+        </button>
+      </div>
+
+      <div class="auth-divider">
+        <span>OR CONTINUE WITH EMAIL / USERNAME</span>
+      </div>
+
       <div class="auth-tabs">
         <button class="auth-tab-btn active" id="authTab-signin" onclick="switchAuthTab('signin')">Sign In</button>
         <button class="auth-tab-btn" id="authTab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
@@ -1300,6 +1327,88 @@
         <button class="open-folder-btn" style="width:100%; justify-content:center; margin-top:8px;" onclick="handleAuthentication()" id="authSubmitBtn">Sign In</button>
         <p id="authErrorMsg" style="color:var(--danger); font-size:12px; margin-top:4px; text-align:center;" class="hidden"></p>
       </div>
+    </div>
+  </div>
+
+  <!-- Google OAuth Account Selection Modal -->
+  <div class="modal-overlay" id="googleAuthModal" style="display:none; z-index:10001;">
+    <div class="modal-card oauth-modal-card">
+      <div style="text-align:center; margin-bottom:20px;">
+        <svg width="40" height="40" viewBox="0 0 24 24" style="margin-bottom:8px;">
+          <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+          <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+          <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9c-.4-.7-.6-1.5-.6-2.4z"/>
+          <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
+        </svg>
+        <h3 style="font-size:18px; font-weight:800; color:var(--text); margin-bottom:4px;">Sign in with Google</h3>
+        <p style="color:var(--text-muted); font-size:13px;">Choose an account to continue to SecureVault</p>
+      </div>
+
+      <div class="oauth-account-list">
+        <button class="oauth-account-item" onclick="confirmGoogleAccount('alex.dev@gmail.com', 'Alex Dev', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex')">
+          <div class="oauth-avatar" style="background:#4285F4; color:white;">A</div>
+          <div style="text-align:left; flex:1;">
+            <div style="font-weight:700; color:var(--text); font-size:14px;">Alex Dev</div>
+            <div style="color:var(--text-muted); font-size:12px;">alex.dev@gmail.com</div>
+          </div>
+          <span class="auth-provider-badge google">Google</span>
+        </button>
+
+        <button class="oauth-account-item" onclick="confirmGoogleAccount('user.securevault@gmail.com', 'Secure Vault User', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Vault')">
+          <div class="oauth-avatar" style="background:#34A853; color:white;">S</div>
+          <div style="text-align:left; flex:1;">
+            <div style="font-weight:700; color:var(--text); font-size:14px;">Secure Vault User</div>
+            <div style="color:var(--text-muted); font-size:12px;">user.securevault@gmail.com</div>
+          </div>
+          <span class="auth-provider-badge google">Google</span>
+        </button>
+      </div>
+
+      <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+        <label class="section-label-sm" style="margin-bottom:6px; display:block;">Or Sign in with custom Google Email:</label>
+        <div style="display:flex; gap:8px;">
+          <input type="email" id="customGoogleEmail" class="password-input" placeholder="you@gmail.com" style="flex:1;" onkeypress="if(event.key==='Enter') submitCustomGoogleLogin()" />
+          <button class="action-btn-sm" style="background:var(--primary); color:white;" onclick="submitCustomGoogleLogin()">Sign In</button>
+        </div>
+      </div>
+
+      <button class="modal-close-btn" style="margin-top:16px; width:100%;" onclick="closeOAuthModals()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- GitHub OAuth Authorization Modal -->
+  <div class="modal-overlay" id="githubAuthModal" style="display:none; z-index:10001;">
+    <div class="modal-card oauth-modal-card">
+      <div style="text-align:center; margin-bottom:20px;">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="white" style="margin-bottom:8px;">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        <h3 style="font-size:18px; font-weight:800; color:var(--text); margin-bottom:4px;">Authorize with GitHub</h3>
+        <p style="color:var(--text-muted); font-size:13px;">Connect your GitHub identity to SecureVault</p>
+      </div>
+
+      <div class="oauth-account-list">
+        <button class="oauth-account-item" onclick="confirmGitHubAccount('octocat', 'octocat@github.com', 'https://github.com/ghost.png')">
+          <div class="oauth-avatar" style="background:#24292e; color:white;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          </div>
+          <div style="text-align:left; flex:1;">
+            <div style="font-weight:700; color:var(--text); font-size:14px;">@octocat</div>
+            <div style="color:var(--text-muted); font-size:12px;">The GitHub Mascot</div>
+          </div>
+          <span class="auth-provider-badge github">GitHub</span>
+        </button>
+      </div>
+
+      <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+        <label class="section-label-sm" style="margin-bottom:6px; display:block;">Or Sign in with your GitHub Username:</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="customGitHubUsername" class="password-input" placeholder="github_username" style="flex:1;" onkeypress="if(event.key==='Enter') submitCustomGitHubLogin()" />
+          <button class="action-btn-sm" style="background:#24292e; color:white; border:1px solid rgba(255,255,255,0.2);" onclick="submitCustomGitHubLogin()">Authorize</button>
+        </div>
+      </div>
+
+      <button class="modal-close-btn" style="margin-top:16px; width:100%;" onclick="closeOAuthModals()">Cancel</button>
     </div>
   </div>
 

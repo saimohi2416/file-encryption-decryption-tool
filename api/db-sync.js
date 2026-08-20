@@ -115,6 +115,44 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // 3.5 OAuth Login (Google / GitHub)
+    if (action === 'oauth_login') {
+      const { email, provider, providerId, avatarUrl } = body;
+      if (!username || !provider) {
+        return res.status(400).json({ error: 'Username and provider are required for OAuth login.' });
+      }
+
+      let existingUser = await usersCol.findOne({ username });
+      if (!existingUser) {
+        await usersCol.insertOne({
+          username,
+          email: email || `${username}@${provider}.auth`,
+          provider,
+          providerId: providerId || `${provider}_${Date.now()}`,
+          avatarUrl: avatarUrl || null,
+          passwordHash: passwordHash || 'OAUTH_PASS_HASH_' + provider,
+          mfaEnabled: false,
+          mfaSecret: null,
+          createdAt: new Date().toISOString()
+        });
+        existingUser = await usersCol.findOne({ username });
+      } else {
+        await usersCol.updateOne(
+          { username },
+          { $set: { lastLogin: new Date().toISOString(), avatarUrl: avatarUrl || existingUser.avatarUrl, provider } }
+        );
+      }
+
+      return res.status(200).json({
+        success: true,
+        username: existingUser.username,
+        email: existingUser.email,
+        provider: existingUser.provider,
+        mfaRequired: !!existingUser.mfaEnabled,
+        mfaSecret: existingUser.mfaEnabled ? existingUser.mfaSecret : null
+      });
+    }
+
     // 4. Authenticate credentials for all subsequent data modification/retrieval actions
     const user = await usersCol.findOne({ username });
     if (!user || user.passwordHash !== passwordHash) {

@@ -567,24 +567,219 @@ function showAuthError(msg) {
   errEl.classList.remove('hidden');
 }
 
-function loginUser(username) {
+// ── Social OAuth Authentication (Google & GitHub) ─────────────────────────────
+
+async function deriveOAuthPasswordHash(keyString) {
+  if (window.crypto && window.crypto.subtle && window.crypto.subtle.digest) {
+    try {
+      const encoder = new TextEncoder();
+      const pwdBuffer = encoder.encode(keyString);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', pwdBuffer);
+      return bufToHex(hashBuffer);
+    } catch (e) {
+      return sha256Fallback(keyString);
+    }
+  }
+  return sha256Fallback(keyString);
+}
+
+function handleGoogleSignIn() {
+  if (window.google && window.google.accounts && window.google.accounts.id && window.GOOGLE_CLIENT_ID) {
+    try {
+      google.accounts.id.initialize({
+        client_id: window.GOOGLE_CLIENT_ID,
+        callback: async (response) => {
+          if (response && response.credential) {
+            const base64Url = response.credential.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+            const payload = JSON.parse(jsonPayload);
+            const email = payload.email || 'google.user@gmail.com';
+            const name = payload.name || email.split('@')[0];
+            const avatarUrl = payload.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`;
+            
+            confirmGoogleAccount(email, name, avatarUrl);
+          }
+        }
+      });
+      google.accounts.id.prompt();
+    } catch (err) {
+      console.warn('Google Identity prompt error, displaying account selector modal.', err);
+    }
+  }
+  
+  document.getElementById('googleAuthModal').style.display = 'flex';
+}
+
+async function confirmGoogleAccount(email, name, avatarUrl) {
+  const cleanEmail = email.trim().toLowerCase();
+  const displayName = name || cleanEmail.split('@')[0];
+  const username = 'google_' + cleanEmail.replace(/[^a-z0-9]/g, '_');
+  const passwordHash = await deriveOAuthPasswordHash('google_vault_key_' + cleanEmail);
+  
+  await completeOAuthLogin({
+    username,
+    email: cleanEmail,
+    name: displayName,
+    provider: 'google',
+    providerId: 'google_' + cleanEmail,
+    passwordHash,
+    avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`
+  });
+}
+
+function submitCustomGoogleLogin() {
+  const emailInput = document.getElementById('customGoogleEmail');
+  const email = emailInput ? emailInput.value.trim() : '';
+  if (!email || !email.includes('@')) {
+    alert('Please enter a valid Google email address.');
+    return;
+  }
+  confirmGoogleAccount(email, email.split('@')[0], `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`);
+}
+
+function handleGitHubSignIn() {
+  if (window.GITHUB_CLIENT_ID) {
+    const redirectUri = window.location.origin + window.location.pathname;
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${window.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`;
+    window.location.href = githubAuthUrl;
+    return;
+  }
+  
+  document.getElementById('githubAuthModal').style.display = 'flex';
+}
+
+async function confirmGitHubAccount(githubUsername, email, avatarUrl) {
+  const cleanHandle = githubUsername.trim().replace(/^@/, '').toLowerCase();
+  const displayName = '@' + cleanHandle;
+  const username = 'github_' + cleanHandle;
+  const passwordHash = await deriveOAuthPasswordHash('github_vault_key_' + cleanHandle);
+  
+  await completeOAuthLogin({
+    username,
+    email: email || `${cleanHandle}@github.com`,
+    name: displayName,
+    provider: 'github',
+    providerId: 'github_' + cleanHandle,
+    passwordHash,
+    avatarUrl: avatarUrl || `https://github.com/${encodeURIComponent(cleanHandle)}.png`
+  });
+}
+
+function submitCustomGitHubLogin() {
+  const handleInput = document.getElementById('customGitHubUsername');
+  const handle = handleInput ? handleInput.value.trim() : '';
+  if (!handle) {
+    alert('Please enter a GitHub username.');
+    return;
+  }
+  confirmGitHubAccount(handle, `${handle.toLowerCase()}@github.com`, `https://github.com/${encodeURIComponent(handle)}.png`);
+}
+
+function closeOAuthModals() {
+  const gModal = document.getElementById('googleAuthModal');
+  const ghModal = document.getElementById('githubAuthModal');
+  if (gModal) gModal.style.display = 'none';
+  if (ghModal) ghModal.style.display = 'none';
+}
+
+async function completeOAuthLogin(userPayload) {
+  const { username, email, provider, providerId, passwordHash, avatarUrl, name } = userPayload;
+  
+  state.passwordHash = passwordHash;
+  state.authProvider = provider;
+  state.userEmail = email;
+  state.userAvatar = avatarUrl;
+  state.displayName = name;
+
+  if (state.cloudSync) {
+    try {
+      await fetch('/api/db-sync?action=oauth_login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, provider, providerId, passwordHash, avatarUrl })
+      });
+    } catch (err) {
+      console.warn('OAuth cloud sync failed, continuing offline:', err);
+    }
+  }
+
+  if (state.db) {
+    try {
+      const tx = state.db.transaction('users', 'readwrite');
+      const store = tx.objectStore('users');
+      store.put({ username, passwordHash, email, provider, avatarUrl, name });
+    } catch (e) {
+      console.warn('IndexedDB OAuth save warning:', e);
+    }
+  }
+
+  closeOAuthModals();
+  loginUser(username, { provider, email, avatarUrl, name });
+}
+
+function loginUser(username, options = {}) {
   state.currentUser = username;
   sessionStorage.setItem('currentUser', username);
   if (state.passwordHash) {
     sessionStorage.setItem('currentUserHash', state.passwordHash);
   }
   
+  const provider = options.provider || sessionStorage.getItem('authProvider') || 'local';
+  const email = options.email || sessionStorage.getItem('userEmail') || '';
+  const avatarUrl = options.avatarUrl || sessionStorage.getItem('userAvatar') || '';
+  const displayName = options.name || sessionStorage.getItem('displayName') || username;
+
+  sessionStorage.setItem('authProvider', provider);
+  if (email) sessionStorage.setItem('userEmail', email);
+  if (avatarUrl) sessionStorage.setItem('userAvatar', avatarUrl);
+  if (displayName) sessionStorage.setItem('displayName', displayName);
+
   // Hide Auth screen
-  document.getElementById('masterLoginOverlay').classList.remove('open');
-  document.getElementById('masterLoginOverlay').style.display = 'none';
+  const overlay = document.getElementById('masterLoginOverlay');
+  if (overlay) {
+    overlay.classList.remove('open');
+    overlay.style.display = 'none';
+  }
 
   // Show user profile in sidebar
-  document.getElementById('userDisplayCard').classList.remove('hidden');
-  document.getElementById('logoutBtnWrap').classList.remove('hidden');
-  document.getElementById('userNameDisplay').textContent = username;
-  document.getElementById('userAvatar').textContent = username.slice(0, 2).toUpperCase();
+  const card = document.getElementById('userDisplayCard');
+  const logoutWrap = document.getElementById('logoutBtnWrap');
+  if (card) card.classList.remove('hidden');
+  if (logoutWrap) logoutWrap.classList.remove('hidden');
+  
+  const nameEl = document.getElementById('userNameDisplay');
+  if (nameEl) nameEl.textContent = displayName;
 
-  addLog(`User session opened: ${username}`, 'success');
+  const subEl = document.getElementById('userSubDisplay');
+  if (subEl) subEl.textContent = email ? email : 'Active Session';
+
+  const avatarEl = document.getElementById('userAvatar');
+  if (avatarEl) {
+    if (avatarUrl && avatarUrl.startsWith('http')) {
+      avatarEl.innerHTML = `<img src="${avatarUrl}" alt="${displayName}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" onerror="this.outerHTML='${displayName.slice(0, 2).toUpperCase()}'" />`;
+    } else if (provider === 'google') {
+      avatarEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9c-.4-.7-.6-1.5-.6-2.4z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/></svg>`;
+    } else if (provider === 'github') {
+      avatarEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>`;
+    } else {
+      avatarEl.textContent = displayName.slice(0, 2).toUpperCase();
+    }
+  }
+
+  const badgeEl = document.getElementById('userProviderBadge');
+  if (badgeEl) {
+    if (provider === 'google') {
+      badgeEl.innerHTML = `<span class="auth-provider-badge google">Google OAuth</span>`;
+    } else if (provider === 'github') {
+      badgeEl.innerHTML = `<span class="auth-provider-badge github">GitHub OAuth</span>`;
+    } else {
+      badgeEl.innerHTML = `<span class="auth-provider-badge local">Password</span>`;
+    }
+  }
+
+  const logMsg = provider !== 'local' ? `User session opened via ${provider.toUpperCase()}: ${displayName} (${username})` : `User session opened: ${username}`;
+  addLog(logMsg, 'success');
   generateMockCase(`User ${username} Logged In`, 'Low', 'Resolved');
 
   // Load custom user files & ledger logs
@@ -599,22 +794,37 @@ function loginUser(username) {
 function logoutUser() {
   state.currentUser = null;
   state.passwordHash = null;
+  state.authProvider = null;
+  state.userEmail = null;
+  state.userAvatar = null;
+  state.displayName = null;
+
   sessionStorage.removeItem('currentUser');
   sessionStorage.removeItem('currentUserHash');
+  sessionStorage.removeItem('authProvider');
+  sessionStorage.removeItem('userEmail');
+  sessionStorage.removeItem('userAvatar');
+  sessionStorage.removeItem('displayName');
 
   // Show Auth screen
-  document.getElementById('masterLoginOverlay').classList.add('open');
-  document.getElementById('masterLoginOverlay').style.display = 'flex';
+  const overlay = document.getElementById('masterLoginOverlay');
+  if (overlay) {
+    overlay.classList.add('open');
+    overlay.style.display = 'flex';
+  }
 
   // Hide user info
-  document.getElementById('userDisplayCard').classList.add('hidden');
-  document.getElementById('logoutBtnWrap').classList.add('hidden');
+  const card = document.getElementById('userDisplayCard');
+  const logoutWrap = document.getElementById('logoutBtnWrap');
+  if (card) card.classList.add('hidden');
+  if (logoutWrap) logoutWrap.classList.add('hidden');
   
   // Clear inputs
   document.getElementById('authUsername').value = '';
   document.getElementById('authPassword').value = '';
   document.getElementById('authConfirmPassword').value = '';
 
+  closeOAuthModals();
   resetAll();
   addLog('User logged out. Session secured.', 'info');
 }

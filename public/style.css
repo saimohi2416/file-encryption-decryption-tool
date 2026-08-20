@@ -3282,4 +3282,172 @@ body {
   100% { transform: scale(0.9); opacity: 0.7; }
 }
 
+/* ── Front-Page Social SSO (Google & GitHub) Authentication Styles ───────────── */
+.sso-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.sso-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.sso-btn:hover {
+  transform: translateY(-2px);
+}
+
+.sso-btn:active {
+  transform: translateY(0);
+}
+
+.sso-btn-google {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.sso-btn-google:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(66, 133, 244, 0.5);
+  box-shadow: 0 6px 20px rgba(66, 133, 244, 0.25);
+}
+
+.sso-btn-github {
+  background: #171b21;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.sso-btn-github:hover {
+  background: #24292e;
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.auth-divider span {
+  padding: 0 12px;
+  opacity: 0.65;
+}
+
+/* User Sidebar Profile Tags */
+.auth-provider-badge-wrap {
+  margin-top: 4px;
+}
+
+.auth-provider-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.auth-provider-badge.google {
+  background: rgba(66, 133, 244, 0.15);
+  border: 1px solid rgba(66, 133, 244, 0.4);
+  color: #60a5fa;
+}
+
+.auth-provider-badge.github {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #e2e8f0;
+}
+
+.auth-provider-badge.local {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #818cf8;
+}
+
+/* OAuth Modal Components */
+.oauth-modal-card {
+  max-width: 440px;
+  width: 90%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(24px);
+}
+
+.oauth-account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oauth-account-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.oauth-account-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary);
+  transform: translateX(4px);
+}
+
+.oauth-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+
 
