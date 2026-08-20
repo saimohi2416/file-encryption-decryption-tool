@@ -1,6 +1,9 @@
 {
   "name": "secure-vault-enterprise",
   "version": "2.0.0",
+  "scripts": {
+    "build": "echo Static site ready"
+  },
   "dependencies": {
     "@simplewebauthn/browser": "^10.0.0",
     "@simplewebauthn/server": "^10.0.0",

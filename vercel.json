@@ -1,25 +1,13 @@
 {
   "cleanUrls": true,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     },
     {
-      "src": "/.well-known/(.*)",
-      "dest": "/.well-known/$1"
-    },
-    {
-      "src": "/splash",
-      "dest": "/splash.html"
-    },
-    {
-      "src": "/(.*)\\.(.*)",
-      "dest": "/$1.$2"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/splash",
+      "destination": "/splash.html"
     }
   ],
   "headers": [
@@ -41,10 +29,6 @@
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
-        },
-        {
-          "key": "Strict-Transport-Security",
-          "value": "max-age=63072000; includeSubDomains; preload"
         }
       ]
     }

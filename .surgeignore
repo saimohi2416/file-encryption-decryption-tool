@@ -1,0 +1,10 @@
+node_modules
+.git
+.github
+node-portable
+app-release.apk
+app-release.aab
+twa-project
+__pycache__
+*.zip
+*.jks
