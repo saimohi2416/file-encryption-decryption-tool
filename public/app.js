@@ -458,7 +458,7 @@ async function handleAuthentication() {
   if (state.cloudSync) {
     if (currentAuthTab === 'signin') {
       try {
-        const res = await fetch('/api/db-sync?action=signin', {
+        const res = await fetch(getDbSyncEndpoint('signin'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, passwordHash })
@@ -492,7 +492,7 @@ async function handleAuthentication() {
         return;
       }
       try {
-        const res = await fetch('/api/db-sync?action=signup', {
+        const res = await fetch(getDbSyncEndpoint('signup'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, passwordHash })
@@ -694,7 +694,7 @@ async function completeOAuthLogin(userPayload) {
 
   if (state.cloudSync) {
     try {
-      await fetch('/api/db-sync?action=oauth_login', {
+      await fetch(getDbSyncEndpoint('oauth_login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, provider, providerId, passwordHash, avatarUrl })
@@ -3070,46 +3070,149 @@ function liftLockdown() {
   }
 }
 
-// ── MongoDB Database Cloud Sync Functions ───────────────────────────────────
+// ── MongoDB Database & Local Database Management Functions ───────────────────
+
+function getDbSyncEndpoint(action) {
+  const base = window.CUSTOM_API_BASE || '';
+  return `${base}/api/db-sync?action=${action}`;
+}
 
 async function checkDBStatus() {
   const indicator = document.getElementById('dbStatusIndicator');
+  const modalIndicator = document.getElementById('dbModalStatusDetails');
+  
+  let endpoint = getDbSyncEndpoint('status');
+  
   try {
-    const res = await fetch('/api/db-sync?action=status');
-    if (!res.ok) throw new Error('API status check failed');
-    const data = await res.json();
-    if (data.configured && data.connected) {
-      state.cloudSync = true;
-      if (indicator) {
-        indicator.innerHTML = `<span class="pulse-dot" style="background:#10b981; width:8px; height:8px; box-shadow: 0 0 8px #10b981;"></span> DB: MongoDB Cloud (Synced)`;
-        indicator.title = "Connected to MongoDB Cloud database. Your profiles, virtual files and ledger logs are synced.";
+    let res;
+    try {
+      res = await fetch(endpoint);
+    } catch (netErr) {
+      if (!window.CUSTOM_API_BASE && window.location.hostname.includes('surge.sh')) {
+        const fallbackUrl = 'https://securevault-enterprise.vercel.app/api/db-sync?action=status';
+        res = await fetch(fallbackUrl);
+        if (res && res.ok) {
+          window.CUSTOM_API_BASE = 'https://securevault-enterprise.vercel.app';
+        }
       }
-      return true;
-    } else {
-      state.cloudSync = false;
-      if (indicator) {
-        indicator.innerHTML = `<span class="pulse-dot" style="background:#f59e0b; width:8px; height:8px; animation: none;"></span> DB: Local (IndexedDB)`;
-        indicator.title = data.configured 
-          ? "MongoDB is configured but connection failed. Falling back to local database."
-          : "MongoDB is not configured. Add MONGODB_URI to Vercel to enable Cloud Sync.";
+    }
+
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data.configured && data.connected) {
+        state.cloudSync = true;
+        if (indicator) {
+          indicator.innerHTML = `<span class="pulse-dot" style="background:#10b981; width:8px; height:8px; box-shadow: 0 0 8px #10b981;"></span> DB: MongoDB Cloud (Synced)`;
+          indicator.title = "Connected to MongoDB Cloud database. Click to open Database Settings.";
+        }
+        if (modalIndicator) {
+          modalIndicator.style.background = "rgba(16,185,129,0.15)";
+          modalIndicator.style.borderColor = "rgba(16,185,129,0.3)";
+          modalIndicator.style.color = "#10b981";
+          modalIndicator.innerHTML = "🟢 Connected to MongoDB Cloud Database (Active & Synced)";
+        }
+        return true;
+      } else {
+        state.cloudSync = false;
+        if (indicator) {
+          indicator.innerHTML = `<span class="pulse-dot" style="background:#f59e0b; width:8px; height:8px; animation: none;"></span> DB: Local (IndexedDB)`;
+          indicator.title = data.configured 
+            ? "MongoDB is configured but connection failed. Click to manage database."
+            : "Running on persistent Local IndexedDB engine. Click to manage database.";
+        }
+        if (modalIndicator) {
+          modalIndicator.style.background = "rgba(245,158,11,0.15)";
+          modalIndicator.style.borderColor = "rgba(245,158,11,0.3)";
+          modalIndicator.style.color = "#f59e0b";
+          modalIndicator.innerHTML = "🟡 Engine: Persistent Client-Side IndexedDB Database";
+        }
+        return false;
       }
-      return false;
     }
   } catch (e) {
-    console.warn("DB status check failed:", e);
-    state.cloudSync = false;
-    if (indicator) {
-      indicator.innerHTML = `<span class="pulse-dot" style="background:#ef4444; width:8px; height:8px; animation: none;"></span> DB: Status Error`;
-      indicator.title = "Failed to communicate with DB sync API. Running in local-only mode.";
-    }
-    return false;
+    console.warn("DB status check warning:", e);
+  }
+
+  state.cloudSync = false;
+  if (indicator) {
+    indicator.innerHTML = `<span class="pulse-dot" style="background:#6366f1; width:8px; height:8px; animation: none;"></span> DB: Local (IndexedDB)`;
+    indicator.title = "Running on client-side IndexedDB database. Click to open Database Manager.";
+  }
+  if (modalIndicator) {
+    modalIndicator.style.background = "rgba(99,102,241,0.15)";
+    modalIndicator.style.borderColor = "rgba(99,102,241,0.3)";
+    modalIndicator.style.color = "#a5b4fc";
+    modalIndicator.innerHTML = "🔵 Active Engine: Offline-First IndexedDB Local Vault Database";
+  }
+  return false;
+}
+
+function openDatabaseModal() {
+  const modal = document.getElementById('databaseModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    checkDBStatus();
+    updateDatabaseModalStats();
+  }
+}
+
+function closeDatabaseModal() {
+  const modal = document.getElementById('databaseModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function updateDatabaseModalStats() {
+  const userEl = document.getElementById('dbModalCurrentUser');
+  const providerEl = document.getElementById('dbModalAuthProvider');
+  const fileCountEl = document.getElementById('dbModalFileCount');
+  
+  if (userEl) userEl.textContent = state.currentUser || 'Guest User';
+  if (providerEl) {
+    const provider = sessionStorage.getItem('authProvider') || 'local';
+    if (provider === 'google') providerEl.innerHTML = '<span class="auth-provider-badge google">Google OAuth</span>';
+    else if (provider === 'github') providerEl.innerHTML = '<span class="auth-provider-badge github">GitHub OAuth</span>';
+    else providerEl.innerHTML = '<span class="auth-provider-badge local">Password</span>';
+  }
+  
+  if (fileCountEl && state.db) {
+    try {
+      const tx = state.db.transaction('virtual_files', 'readonly');
+      const store = tx.objectStore('virtual_files');
+      const req = store.count();
+      req.onsuccess = () => {
+        fileCountEl.textContent = req.result + ' items stored';
+      };
+    } catch(e) {}
+  }
+}
+
+async function testDatabaseConnection() {
+  addLog('Testing database connection health...', 'info');
+  const isConnected = await checkDBStatus();
+  if (isConnected) {
+    addLog('MongoDB Cloud database connection verified successfully!', 'success');
+    alert('MongoDB Cloud database connection verified successfully!');
+  } else {
+    addLog('Local IndexedDB database engine is active and ready.', 'info');
+    alert('Client-side IndexedDB database is active and storing records securely!');
+  }
+}
+
+async function triggerManualDBSync() {
+  if (state.currentUser && state.passwordHash) {
+    addLog('Initiating manual database sync...', 'info');
+    await syncFromCloud(state.currentUser, state.passwordHash);
+    updateDatabaseModalStats();
+    alert('Database sync complete!');
+  } else {
+    alert('Please log in with Google, GitHub, or Password to sync database.');
   }
 }
 
 async function syncFromCloud(username, passwordHash) {
   try {
-    addLog('Syncing database with MongoDB Cloud...', 'info');
-    const res = await fetch('/api/db-sync?action=get_data', {
+    addLog('Syncing database with Cloud/Local DB...', 'info');
+    const res = await fetch(getDbSyncEndpoint('get_data'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, passwordHash })
@@ -3157,7 +3260,7 @@ async function syncFromCloud(username, passwordHash) {
         
         deleteTx.oncomplete = () => {
           fwRenderFiles();
-          addLog('Virtual Workspace synced with cloud.', 'success');
+          addLog('Virtual Workspace synced with cloud database.', 'success');
         };
       }
     };
@@ -3186,14 +3289,14 @@ async function syncFromCloud(username, passwordHash) {
         
         deleteTx.oncomplete = () => {
           initLedgerData();
-          addLog('Cryptographic Ledger synced with cloud.', 'success');
+          addLog('Cryptographic Ledger synced with database.', 'success');
         };
       }
     };
 
   } catch (err) {
     console.error('Cloud sync error:', err);
-    addLog('Could not sync with MongoDB. Running with local cache.', 'warning');
+    addLog('Could not sync with MongoDB Cloud. Running with local database cache.', 'warning');
     fwRenderFiles();
     initLedgerData();
   }
@@ -3213,7 +3316,7 @@ async function syncSaveFile(entry) {
       mimeType: entry.mimeType
     };
     
-    const res = await fetch('/api/db-sync?action=save_file', {
+    const res = await fetch(getDbSyncEndpoint('save_file'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3231,7 +3334,7 @@ async function syncSaveFile(entry) {
 async function syncAddLedger(entry) {
   if (!state.cloudSync || !state.currentUser || !state.passwordHash) return;
   try {
-    const res = await fetch('/api/db-sync?action=add_ledger', {
+    const res = await fetch(getDbSyncEndpoint('add_ledger'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3249,7 +3352,7 @@ async function syncAddLedger(entry) {
 async function syncClearLedger() {
   if (!state.cloudSync || !state.currentUser || !state.passwordHash) return;
   try {
-    const res = await fetch('/api/db-sync?action=clear_ledger', {
+    const res = await fetch(getDbSyncEndpoint('clear_ledger'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

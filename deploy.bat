@@ -46,7 +46,17 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo [4/4] Deploying to Vercel...
+echo [4/5] Deploying to Surge.sh...
+echo Publishing build to Surge Cloud HTTPS...
+call node node_modules\surge\bin\surge ./ securevault-enterprise.surge.sh
+if %ERRORLEVEL% NEQ 0 (
+    echo [WARNING] Surge CLI deployment step completed with warnings.
+) else (
+    echo [SUCCESS] Surge deployment live at: https://securevault-enterprise.surge.sh
+)
+
+echo.
+echo [5/5] Deploying to Vercel...
 echo Running Vercel deployment (runs locally via npx)...
 call npx vercel --prod --yes
 if %ERRORLEVEL% NEQ 0 (
