@@ -278,7 +278,7 @@ function initDatabase() {
         return;
       }
       
-      const request = indexedDB.open('securevault_db', 2);
+      const request = indexedDB.open('securevault_db', 3);
 
       request.onupgradeneeded = (e) => {
         const db = e.target.result;
@@ -301,6 +301,10 @@ function initDatabase() {
 
         if (!db.objectStoreNames.contains('copilot_history')) {
           db.createObjectStore('copilot_history', { keyPath: 'id', autoIncrement: true });
+        }
+
+        if (!db.objectStoreNames.contains('app_settings')) {
+          db.createObjectStore('app_settings', { keyPath: 'key' });
         }
       };
 

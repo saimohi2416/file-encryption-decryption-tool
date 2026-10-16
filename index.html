@@ -24,9 +24,44 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
+  <style>
+    .sv-update-banner {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 99999;
+      width: 100%;
+      padding: 10px 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      transition: all 0.3s ease;
+    }
+    .sv-update-banner-ready {
+      background: linear-gradient(90deg, #090d16 0%, #0369a1 100%);
+      border-bottom: 2px solid #06b6d4;
+      color: #f8fafc;
+    }
+    .sv-update-banner-deferred {
+      background: linear-gradient(90deg, #1e1b4b 0%, #451a03 100%);
+      border-bottom: 2px solid #f59e0b;
+      color: #fef3c7;
+    }
+    .auth-provider-badge.google {
+      background: rgba(234, 67, 53, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(234, 67, 53, 0.4);
+    }
+    .auth-provider-badge.github {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+  </style>
 </head>
 
 <body>
+  <!-- High Priority Auto-Update Notification Banner -->
+  <div id="sv-update-banner" class="sv-update-banner"></div>
 
   <!-- Insecure Context Warning Banner -->
   <div id="secureContextWarning" class="secure-context-warning hidden" style="display: none;">
@@ -1392,87 +1427,7 @@
     </div>
   </div>
 
-  <!-- Google OAuth Account Selection Modal -->
-  <div class="modal-overlay" id="googleAuthModal" style="display:none; z-index:10001;">
-    <div class="modal-card oauth-modal-card">
-      <div style="text-align:center; margin-bottom:20px;">
-        <svg width="40" height="40" viewBox="0 0 24 24" style="margin-bottom:8px;">
-          <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
-          <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
-          <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9c-.4-.7-.6-1.5-.6-2.4z"/>
-          <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
-        </svg>
-        <h3 style="font-size:18px; font-weight:800; color:var(--text); margin-bottom:4px;">Sign in with Google</h3>
-        <p style="color:var(--text-muted); font-size:13px;">Choose an account to continue to SecureVault</p>
-      </div>
-
-      <div class="oauth-account-list">
-        <button class="oauth-account-item" onclick="confirmGoogleAccount('alex.dev@gmail.com', 'Alex Dev', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex')">
-          <div class="oauth-avatar" style="background:#4285F4; color:white;">A</div>
-          <div style="text-align:left; flex:1;">
-            <div style="font-weight:700; color:var(--text); font-size:14px;">Alex Dev</div>
-            <div style="color:var(--text-muted); font-size:12px;">alex.dev@gmail.com</div>
-          </div>
-          <span class="auth-provider-badge google">Google</span>
-        </button>
-
-        <button class="oauth-account-item" onclick="confirmGoogleAccount('user.securevault@gmail.com', 'Secure Vault User', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Vault')">
-          <div class="oauth-avatar" style="background:#34A853; color:white;">S</div>
-          <div style="text-align:left; flex:1;">
-            <div style="font-weight:700; color:var(--text); font-size:14px;">Secure Vault User</div>
-            <div style="color:var(--text-muted); font-size:12px;">user.securevault@gmail.com</div>
-          </div>
-          <span class="auth-provider-badge google">Google</span>
-        </button>
-      </div>
-
-      <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
-        <label class="section-label-sm" style="margin-bottom:6px; display:block;">Or Sign in with custom Google Email:</label>
-        <div style="display:flex; gap:8px;">
-          <input type="email" id="customGoogleEmail" class="password-input" placeholder="you@gmail.com" style="flex:1;" onkeypress="if(event.key==='Enter') submitCustomGoogleLogin()" />
-          <button class="action-btn-sm" style="background:var(--primary); color:white;" onclick="submitCustomGoogleLogin()">Sign In</button>
-        </div>
-      </div>
-
-      <button class="modal-close-btn" style="margin-top:16px; width:100%;" onclick="closeOAuthModals()">Cancel</button>
-    </div>
-  </div>
-
-  <!-- GitHub OAuth Authorization Modal -->
-  <div class="modal-overlay" id="githubAuthModal" style="display:none; z-index:10001;">
-    <div class="modal-card oauth-modal-card">
-      <div style="text-align:center; margin-bottom:20px;">
-        <svg width="42" height="42" viewBox="0 0 24 24" fill="white" style="margin-bottom:8px;">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-        </svg>
-        <h3 style="font-size:18px; font-weight:800; color:var(--text); margin-bottom:4px;">Authorize with GitHub</h3>
-        <p style="color:var(--text-muted); font-size:13px;">Connect your GitHub identity to SecureVault</p>
-      </div>
-
-      <div class="oauth-account-list">
-        <button class="oauth-account-item" onclick="confirmGitHubAccount('octocat', 'octocat@github.com', 'https://github.com/ghost.png')">
-          <div class="oauth-avatar" style="background:#24292e; color:white;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
-          </div>
-          <div style="text-align:left; flex:1;">
-            <div style="font-weight:700; color:var(--text); font-size:14px;">@octocat</div>
-            <div style="color:var(--text-muted); font-size:12px;">The GitHub Mascot</div>
-          </div>
-          <span class="auth-provider-badge github">GitHub</span>
-        </button>
-      </div>
-
-      <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
-        <label class="section-label-sm" style="margin-bottom:6px; display:block;">Or Sign in with your GitHub Username:</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="customGitHubUsername" class="password-input" placeholder="github_username" style="flex:1;" onkeypress="if(event.key==='Enter') submitCustomGitHubLogin()" />
-          <button class="action-btn-sm" style="background:#24292e; color:white; border:1px solid rgba(255,255,255,0.2);" onclick="submitCustomGitHubLogin()">Authorize</button>
-        </div>
-      </div>
-
-      <button class="modal-close-btn" style="margin-top:16px; width:100%;" onclick="closeOAuthModals()">Cancel</button>
-    </div>
-  </div>
+  <!-- Real OAuth 2.0 PKCE is active — Simulated credential selection modals removed -->
 
   <!-- Lockdown Overlay -->
   <style>
@@ -1548,74 +1503,176 @@
         </div>
       </div>
     </div>
-  <!-- Database & Account Management Modal -->
-  <div class="modal-overlay" id="databaseModal" style="display:none; z-index:10002;">
-    <div class="modal-card" style="max-width:560px;">
+  </div> <!-- End MFA Setup & Verification Modal -->
+
+  <!-- Unified Database & Account Center Modal (Real OAuth 2.0 PKCE + WhatsApp-Style Auto-Backup) -->
+  <div class="modal-overlay" id="accountCenterModal" style="display:none; z-index:10002;">
+    <div class="modal-card" style="max-width:640px; max-height:90vh; overflow-y:auto;">
+      <!-- Modal Header -->
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:12px;">
         <div style="display:flex; align-items:center; gap:10px;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M12 2C6.48 2 2 4.02 2 6.5s4.48 4.5 10 4.5 10-2.02 10-4.5S17.52 2 12 2z"/><path d="M2 6.5v11C2 20 6.48 22 12 22s10-2 10-4.5v-11"/><path d="M2 12c0 2.48 4.48 4.5 10 4.5s10-2.02 10-4.5"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+            <path d="M12 2C6.48 2 2 4.02 2 6.5s4.48 4.5 10 4.5 10-2.02 10-4.5S17.52 2 12 2z"/>
+            <path d="M2 6.5v11C2 20 6.48 22 12 22s10-2 10-4.5v-11"/>
+            <path d="M2 12c0 2.48 4.48 4.5 10 4.5s10-2.02 10-4.5"/>
+          </svg>
           <h3 style="font-size:18px; font-weight:800; color:var(--text); margin:0;">Database & Account Center</h3>
         </div>
-        <button class="action-btn-sm" style="background:transparent; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;" onclick="closeDatabaseModal()">✕</button>
+        <button id="btn-account-center-close" class="action-btn-sm" style="background:transparent; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;" onclick="closeAccountCenterModal()">✕</button>
       </div>
 
-      <!-- Database Status Badge -->
-      <div id="dbModalStatusDetails" class="db-status-badge" style="padding:12px 16px; border-radius:var(--radius); border:1px solid var(--border); font-size:13px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
-        🔵 Active Engine: Client-Side IndexedDB Database
+      <!-- 1. Identity & Active Session Card -->
+      <div id="account-center-identity-card" style="margin-bottom:16px;">
+        <!-- Injected dynamically by AuthSyncManager -->
       </div>
 
-      <!-- Quick Social Login Unit -->
-      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:16px;">
-        <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px;">Identity Association</div>
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Log in or associate your vault session with Google or GitHub identity across all units.</p>
-        
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
-          <button type="button" class="sso-btn sso-btn-google" onclick="closeDatabaseModal(); handleGoogleSignIn();" style="padding:8px 12px; font-size:13px;">
-            <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9c-.4-.7-.6-1.5-.6-2.4z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/></svg>
-            <span>Google Login</span>
-          </button>
-          <button type="button" class="sso-btn sso-btn-github" onclick="closeDatabaseModal(); handleGitHubSignIn();" style="padding:8px 12px; font-size:13px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
-            <span>GitHub Login</span>
-          </button>
+      <!-- 2. Guest-to-Account Migration Prompt (Conditional) -->
+      <div id="account-center-migration-card" style="display:none; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:10px; padding:14px; margin-bottom:16px;">
+        <div style="display:flex; align-items:center; gap:8px; color:#fbbf24; font-weight:700; font-size:13px; margin-bottom:6px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+          </svg>
+          <span>Merge Local Guest Vault Data</span>
         </div>
-
-        <div style="font-size:12px; display:flex; justify-content:space-between; color:var(--text-muted); border-top:1px dashed var(--border); padding-top:8px; margin-top:4px;">
-          <span>Current Account: <strong id="dbModalCurrentUser" style="color:var(--text);">Guest User</strong></span>
-          <span id="dbModalAuthProvider"></span>
-        </div>
-      </div>
-
-      <!-- Storage Info & Controls -->
-      <div style="background:rgba(99,102,241,0.04); border:1px solid rgba(99,102,241,0.15); border-radius:var(--radius); padding:16px; margin-bottom:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <span style="font-size:13px; font-weight:700; color:var(--primary-light);">Vault Storage Status</span>
-          <span id="dbModalFileCount" style="font-size:12px; font-weight:600; color:var(--text);">0 items</span>
-        </div>
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Synced database collections: <code>users</code>, <code>virtual_files</code>, <code>ledger</code>, <code>audit_logs</code>.</p>
-        
-        <div style="display:flex; gap:10px;">
-          <button class="open-folder-btn" style="flex:1; justify-content:center; font-size:12px; padding:8px;" onclick="testDatabaseConnection()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            Test Connection
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+          We found existing unlinked guest data in this browser: <strong id="migration-counts-desc" style="color:var(--text);"></strong>.
+        </p>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button id="btn-migration-clean" class="action-btn-sm" style="background:transparent; border:1px solid var(--border); color:var(--text-muted); cursor:pointer;">
+            Start Clean
           </button>
-          <button class="open-folder-btn" style="flex:1; justify-content:center; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); color:#10b981; font-size:12px; padding:8px;" onclick="triggerManualDBSync()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-            Sync Database
+          <button id="btn-migration-merge" class="action-btn-sm" style="background:#0284c7; border:none; color:white; font-weight:700; cursor:pointer;">
+            Merge Local Vault
           </button>
         </div>
       </div>
 
-      <button class="modal-close-btn" style="width:100%;" onclick="closeDatabaseModal()">Close</button>
+      <!-- 3. WhatsApp-Style Cloud Auto-Backup Settings Panel -->
+      <div style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+            <span style="font-size:14px; font-weight:800; color:var(--text);">Zero-Knowledge Auto-Backup</span>
+          </div>
+          <span id="backup-network-badge" class="px-2 py-0.5 text-xs font-mono rounded bg-slate-800 text-slate-400 border border-slate-700">
+            Checking Network...
+          </span>
+        </div>
+
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
+          End-to-end encrypted with AES-256-GCM (600,000 PBKDF2 iterations). Plaintext never leaves your browser.
+        </p>
+
+        <!-- Configuration Grid -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+          <!-- Backup Frequency -->
+          <div>
+            <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">
+              BACKUP FREQUENCY
+            </label>
+            <select id="backup-frequency-select" class="password-input" style="width:100%; padding:8px 10px; font-size:12px; background:rgba(255,255,255,0.04);">
+              <option value="off">Off (Manual Only)</option>
+              <option value="instant">Instant (On File Change)</option>
+              <option value="daily" selected>Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+
+          <!-- Network Preference -->
+          <div>
+            <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">
+              NETWORK PREFERENCE
+            </label>
+            <div style="display:flex; gap:12px; align-items:center; padding-top:6px; font-size:12px;">
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                <input type="radio" name="backup-net-pref" id="backup-net-wifi" value="wifi-only" checked style="accent-color:#06b6d4;" />
+                <span>Wi-Fi Only</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                <input type="radio" name="backup-net-pref" id="backup-net-any" value="any" style="accent-color:#06b6d4;" />
+                <span>Wi-Fi or Cellular</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Include Encrypted Files Toggle -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; margin-bottom:16px;">
+          <div>
+            <div style="font-size:12px; font-weight:700; color:var(--text);">Include Encrypted (.enc) Vault Files</div>
+            <div style="font-size:11px; color:var(--text-muted);">Back up raw encrypted file blobs alongside metadata</div>
+          </div>
+          <label style="position:relative; display:inline-block; width:38px; height:22px;">
+            <input type="checkbox" id="backup-include-enc-toggle" checked style="accent-color:#06b6d4; width:18px; height:18px; cursor:pointer;" />
+          </label>
+        </div>
+
+        <!-- Backup Telemetry Box -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:12px; margin-bottom:16px; font-family:'JetBrains Mono', monospace; font-size:11px;">
+          <div>
+            <span style="color:var(--text-muted);">Last Backup:</span>
+            <div id="backup-last-time" style="color:#38bdf8; font-weight:700; margin-top:2px;">Never</div>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);">Container Size:</span>
+            <div id="backup-size-display" style="color:#34d399; font-weight:700; margin-top:2px;">0 KB</div>
+          </div>
+        </div>
+
+        <!-- Live Progress Bar -->
+        <div style="margin-bottom:12px;">
+          <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
+            <div id="backup-progress-bar" style="width:0%; height:100%; background:#06b6d4; transition:width 0.3s ease;"></div>
+          </div>
+          <div id="backup-status-text" style="font-size:11px; color:var(--text-muted); margin-top:6px; font-family:'JetBrains Mono', monospace;">
+            Engine ready.
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button id="btn-backup-now" class="action-btn-sm" style="flex:1; justify-content:center; background:#0284c7; color:white; font-weight:700; padding:10px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            Backup Now
+          </button>
+          <button id="btn-export-svbackup" class="action-btn-sm" style="flex:1; justify-content:center; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); color:#34d399; font-weight:700; padding:10px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Export .svbackup
+          </button>
+        </div>
+
+        <div style="margin-top:10px; text-align:center;">
+          <label for="input-restore-svbackup" style="font-size:11px; color:#38bdf8; text-decoration:underline; cursor:pointer;">
+            📂 Restore / Import .svbackup Container
+          </label>
+          <input type="file" id="input-restore-svbackup" accept=".svbackup,.json" style="display:none;" />
+        </div>
+      </div>
+
+      <!-- Close Button -->
+      <button class="modal-close-btn" style="width:100%;" onclick="closeAccountCenterModal()">Done</button>
     </div>
   </div>
 
+  <!-- Alias ID for backwards compatibility -->
+  <div id="databaseModal" style="display:none;"></div>
 
   <script src="jszip.min.js"></script>
   <script src="qrious.min.js"></script>
   <script src="crypto.js"></script>
   <script src="app.js"></script>
   <script src="chatbot.js"></script>
+  <script type="module" src="js/backup-engine.js"></script>
+  <script type="module" src="js/auth-sync.js"></script>
+  <script type="module" src="js/version-updater.js"></script>
+  <script type="module" src="js/copilot-ui.js"></script>
 </body>
 
 </html>

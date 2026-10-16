@@ -1,0 +1,11 @@
+{
+  "version": "2.5.0",
+  "buildTime": "2026-10-16T12:00:00Z",
+  "critical": false,
+  "changelog": [
+    "WhatsApp-Style Cloud Auto-Backup Engine (Wi-Fi/Cellular aware)",
+    "Unified Database & Account Center with real OAuth 2.0 PKCE",
+    "Context-Aware AI Security Copilot with SSE streaming & note encryption",
+    "Crypto Worker Safety Guard preventing reloads during active encryption"
+  ]
+}

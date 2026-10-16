@@ -36,7 +36,14 @@ const PBKDF2_ITERS = 600_000;
 const KEY_LEN_BITS = 256;
 const KEY_LEN_BYTES = 32;
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
+function setCryptoWorkerBusy(busy) {
+  if (typeof window !== 'undefined') {
+    window.isCryptoWorkerBusy = busy;
+    if (!busy) {
+      window.dispatchEvent(new CustomEvent('sv:crypto-idle'));
+    }
+  }
+}
 
 function bufToHex(buf) {
   return Array.from(new Uint8Array(buf))
@@ -473,6 +480,8 @@ function runCryptoTaskInWorker(action, payload, onStep = () => {}, onProgress = 
       const worker = new Worker('crypto-worker.js');
       const taskId = 'task_' + Math.random().toString(36).substr(2, 9);
 
+      setCryptoWorkerBusy(true);
+
       worker.onmessage = function (e) {
         const { id, type, phase, message, percent, detail, result, error } = e.data;
         if (id !== taskId) return;
@@ -482,21 +491,25 @@ function runCryptoTaskInWorker(action, payload, onStep = () => {}, onProgress = 
         } else if (type === 'progress') {
           if (typeof onProgress === 'function') onProgress(percent, detail);
         } else if (type === 'complete') {
+          setCryptoWorkerBusy(false);
           worker.terminate();
           resolve(result);
         } else if (type === 'error') {
+          setCryptoWorkerBusy(false);
           worker.terminate();
           reject(new Error(error || 'Worker cryptographic operation failed'));
         }
       };
 
       worker.onerror = function (err) {
+        setCryptoWorkerBusy(false);
         worker.terminate();
         reject(new Error(err.message || 'Web Worker execution error'));
       };
 
       worker.postMessage({ id: taskId, action, ...payload });
     } catch (err) {
+      setCryptoWorkerBusy(false);
       reject(err);
     }
   });

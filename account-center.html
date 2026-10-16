@@ -1,0 +1,155 @@
+<!-- SecureVault AI — Unified Database & Account Center Modal Partial -->
+<div class="modal-overlay" id="accountCenterModal" style="display:none; z-index:10002;">
+  <div class="modal-card" style="max-width:620px; max-height:90vh; overflow-y:auto;">
+    <!-- Modal Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+          <path d="M12 2C6.48 2 2 4.02 2 6.5s4.48 4.5 10 4.5 10-2.02 10-4.5S17.52 2 12 2z"/>
+          <path d="M2 6.5v11C2 20 6.48 22 12 22s10-2 10-4.5v-11"/>
+          <path d="M2 12c0 2.48 4.48 4.5 10 4.5s10-2.02 10-4.5"/>
+        </svg>
+        <h3 style="font-size:18px; font-weight:800; color:var(--text); margin:0;">Database & Account Center</h3>
+      </div>
+      <button id="btn-account-center-close" class="action-btn-sm" style="background:transparent; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;" onclick="closeAccountCenterModal()">✕</button>
+    </div>
+
+    <!-- 1. Identity & Active Session Card -->
+    <div id="account-center-identity-card" style="margin-bottom:16px;">
+      <!-- Injected dynamically by AuthSyncManager -->
+    </div>
+
+    <!-- 2. Guest-to-Account Migration Prompt (Conditional) -->
+    <div id="account-center-migration-card" style="display:none; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:10px; padding:14px; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:8px; color:#fbbf24; font-weight:700; font-size:13px; margin-bottom:6px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+        </svg>
+        <span>Merge Local Guest Vault Data</span>
+      </div>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+        We found existing unlinked guest data in this browser: <strong id="migration-counts-desc" style="color:var(--text);"></strong>.
+      </p>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button id="btn-migration-clean" class="action-btn-sm" style="background:transparent; border:1px solid var(--border); color:var(--text-muted); cursor:pointer;">
+          Start Clean
+        </button>
+        <button id="btn-migration-merge" class="action-btn-sm" style="background:#0284c7; border:none; color:white; font-weight:700; cursor:pointer;">
+          Merge Local Vault
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. WhatsApp-Style Cloud Auto-Backup Settings Panel -->
+    <div style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+          <span style="font-size:14px; font-weight:800; color:var(--text);">Zero-Knowledge Auto-Backup</span>
+        </div>
+        <span id="backup-network-badge" class="px-2 py-0.5 text-xs font-mono rounded bg-slate-800 text-slate-400 border border-slate-700">
+          Checking Network...
+        </span>
+      </div>
+
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
+        End-to-end encrypted with AES-256-GCM (600,000 PBKDF2 iterations). Plaintext never leaves your browser.
+      </p>
+
+      <!-- Configuration Grid -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+        <!-- Backup Frequency -->
+        <div>
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">
+            BACKUP FREQUENCY
+          </label>
+          <select id="backup-frequency-select" class="password-input" style="width:100%; padding:8px 10px; font-size:12px; background:rgba(255,255,255,0.04);">
+            <option value="off">Off (Manual Only)</option>
+            <option value="instant">Instant (On File Change)</option>
+            <option value="daily" selected>Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
+        <!-- Network Preference -->
+        <div>
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">
+            NETWORK PREFERENCE
+          </label>
+          <div style="display:flex; gap:12px; align-items:center; padding-top:6px; font-size:12px;">
+            <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+              <input type="radio" name="backup-net-pref" id="backup-net-wifi" value="wifi-only" checked style="accent-color:#06b6d4;" />
+              <span>Wi-Fi Only</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+              <input type="radio" name="backup-net-pref" id="backup-net-any" value="any" style="accent-color:#06b6d4;" />
+              <span>Wi-Fi or Cellular</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Include Encrypted Files Toggle -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; margin-bottom:16px;">
+        <div>
+          <div style="font-size:12px; font-weight:700; color:var(--text);">Include Encrypted (.enc) Vault Files</div>
+          <div style="font-size:11px; color:var(--text-muted);">Back up raw encrypted file blobs alongside metadata</div>
+        </div>
+        <label style="position:relative; display:inline-block; width:38px; height:22px;">
+          <input type="checkbox" id="backup-include-enc-toggle" checked style="accent-color:#06b6d4; width:18px; height:18px; cursor:pointer;" />
+        </label>
+      </div>
+
+      <!-- Backup Telemetry Box -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:12px; margin-bottom:16px; font-family:'JetBrains Mono', monospace; font-size:11px;">
+        <div>
+          <span style="color:var(--text-muted);">Last Backup:</span>
+          <div id="backup-last-time" style="color:#38bdf8; font-weight:700; margin-top:2px;">Never</div>
+        </div>
+        <div>
+          <span style="color:var(--text-muted);">Container Size:</span>
+          <div id="backup-size-display" style="color:#34d399; font-weight:700; margin-top:2px;">0 KB</div>
+        </div>
+      </div>
+
+      <!-- Live Progress Bar -->
+      <div style="margin-bottom:12px;">
+        <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
+          <div id="backup-progress-bar" style="width:0%; height:100%; background:#06b6d4; transition:width 0.3s ease;"></div>
+        </div>
+        <div id="backup-status-text" style="font-size:11px; color:var(--text-muted); margin-top:6px; font-family:'JetBrains Mono', monospace;">
+          Engine ready.
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <button id="btn-backup-now" class="action-btn-sm" style="flex:1; justify-content:center; background:#0284c7; color:white; font-weight:700; padding:10px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          Backup Now
+        </button>
+        <button id="btn-export-svbackup" class="action-btn-sm" style="flex:1; justify-content:center; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); color:#34d399; font-weight:700; padding:10px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Export .svbackup
+        </button>
+      </div>
+
+      <div style="margin-top:10px; text-align:center;">
+        <label for="input-restore-svbackup" style="font-size:11px; color:#38bdf8; text-decoration:underline; cursor:pointer;">
+          📂 Restore / Import .svbackup Container
+        </label>
+        <input type="file" id="input-restore-svbackup" accept=".svbackup,.json" style="display:none;" />
+      </div>
+    </div>
+
+    <!-- Close Button -->
+    <button class="modal-close-btn" style="width:100%;" onclick="closeAccountCenterModal()">Done</button>
+  </div>
+</div>

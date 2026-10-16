@@ -6,6 +6,10 @@
       "destination": "/api/main"
     },
     {
+      "source": "/api/copilot",
+      "destination": "/api/copilot.js"
+    },
+    {
       "source": "/api/v1/(.*)",
       "destination": "/api/main"
     },
