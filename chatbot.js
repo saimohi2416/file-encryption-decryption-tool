@@ -244,47 +244,70 @@ Provide precise, brief, professional, and helpful replies. Mention the client-si
 
     try {
       const localKey = localStorage.getItem('sv_gemini_api_key');
-      const headers = {
-        'Content-Type': 'application/json'
-      };
-      if (localKey) {
-        headers['X-Gemini-Key'] = localKey;
-      }
+      const headers = { 'Content-Type': 'application/json' };
+      if (localKey) headers['X-Gemini-Key'] = localKey;
 
-      const response = await fetch(API_ENDPOINT, {
+      const streamEndpoint = '/api/v1/copilot/chat/stream';
+      const response = await fetch(streamEndpoint, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
-          messages: conversationHistory
+          prompt: text,
+          history: conversationHistory.slice(0, -1)
         })
       });
 
-      // Remove typing indicator
       typingIndicator.remove();
 
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('Quota exceeded (HTTP 429): Denial of Wallet Rate Limiter Active.');
+        }
         const errData = await response.json().catch(() => ({}));
-        const errMsg = errData.error || ('API request failed with status: ' + response.status);
+        const errMsg = errData.error || errData.detail || ('API request failed with status: ' + response.status);
         throw new Error(errMsg);
       }
 
-      const data = await response.json();
-      const botResponse = data.choices?.[0]?.message?.content || 'Sorry, I encountered an error.';
-      
-      // Update quota indicator if returned
-      if (data.quota && document.getElementById('auditStatQuota')) {
-        document.getElementById('auditStatQuota').textContent = `${data.quota.remaining}/${data.quota.limit}`;
+      // Prepare streaming container
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'sv-chatbot-msg system';
+      const bubbleDiv = document.createElement('div');
+      bubbleDiv.className = 'sv-chatbot-bubble';
+      msgDiv.appendChild(bubbleDiv);
+      messagesList.appendChild(msgDiv);
+
+      let botResponse = '';
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const payload = line.slice(6).trim();
+            if (payload === '[DONE]') break;
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed.text) {
+                botResponse += parsed.text;
+                bubbleDiv.innerHTML = parseMarkdown(botResponse);
+                messagesList.scrollTop = messagesList.scrollHeight;
+              }
+            } catch (e) {}
+          }
+        }
       }
 
-      // Log AI Copilot audit event
       if (typeof window.logAuditEvent === 'function') {
         window.logAuditEvent('AI Security Query', `Query: "${text.substring(0, 40)}..."`, 'info');
       }
 
-      // Render Bot Message
-      appendMessage('system', botResponse);
-      
-      // Add to History
       conversationHistory.push({ role: 'assistant', content: botResponse });
     } catch (err) {
       if (typingIndicator && typingIndicator.parentNode) typingIndicator.remove();

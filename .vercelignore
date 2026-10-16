@@ -1,0 +1,12 @@
+node-portable/
+twa-project/
+app-release.aab
+app-release.apk
+file encryption tool/
+.git/
+.vscode/
+node_modules/
+release-key.jks
+__pycache__/
+*.aab
+*.apk

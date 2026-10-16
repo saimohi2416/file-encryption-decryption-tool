@@ -278,7 +278,7 @@ function initDatabase() {
         return;
       }
       
-      const request = indexedDB.open('securevault_db', 1);
+      const request = indexedDB.open('securevault_db', 2);
 
       request.onupgradeneeded = (e) => {
         const db = e.target.result;
@@ -293,6 +293,14 @@ function initDatabase() {
         
         if (!db.objectStoreNames.contains('virtual_files')) {
           db.createObjectStore('virtual_files', { keyPath: 'id', autoIncrement: true });
+        }
+
+        if (!db.objectStoreNames.contains('audit_logs')) {
+          db.createObjectStore('audit_logs', { keyPath: 'id', autoIncrement: true });
+        }
+
+        if (!db.objectStoreNames.contains('copilot_history')) {
+          db.createObjectStore('copilot_history', { keyPath: 'id', autoIncrement: true });
         }
       };
 
@@ -584,31 +592,9 @@ async function deriveOAuthPasswordHash(keyString) {
 }
 
 function handleGoogleSignIn() {
-  if (window.google && window.google.accounts && window.google.accounts.id && window.GOOGLE_CLIENT_ID) {
-    try {
-      google.accounts.id.initialize({
-        client_id: window.GOOGLE_CLIENT_ID,
-        callback: async (response) => {
-          if (response && response.credential) {
-            const base64Url = response.credential.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-            const payload = JSON.parse(jsonPayload);
-            const email = payload.email || 'google.user@gmail.com';
-            const name = payload.name || email.split('@')[0];
-            const avatarUrl = payload.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`;
-            
-            confirmGoogleAccount(email, name, avatarUrl);
-          }
-        }
-      });
-      google.accounts.id.prompt();
-    } catch (err) {
-      console.warn('Google Identity prompt error, displaying account selector modal.', err);
-    }
-  }
-  
-  document.getElementById('googleAuthModal').style.display = 'flex';
+  const gBtn = document.getElementById('googleSignInBtn');
+  if (gBtn) gBtn.classList.add('loading');
+  window.location.href = '/api/v1/auth/google/login';
 }
 
 async function confirmGoogleAccount(email, name, avatarUrl) {
@@ -639,14 +625,9 @@ function submitCustomGoogleLogin() {
 }
 
 function handleGitHubSignIn() {
-  if (window.GITHUB_CLIENT_ID) {
-    const redirectUri = window.location.origin + window.location.pathname;
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${window.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`;
-    window.location.href = githubAuthUrl;
-    return;
-  }
-  
-  document.getElementById('githubAuthModal').style.display = 'flex';
+  const ghBtn = document.getElementById('githubSignInBtn');
+  if (ghBtn) ghBtn.classList.add('loading');
+  window.location.href = '/api/v1/auth/github/login';
 }
 
 async function confirmGitHubAccount(githubUsername, email, avatarUrl) {
@@ -1942,6 +1923,35 @@ function checkSecureContext() {
 document.addEventListener('DOMContentLoaded', () => {
   checkSecureContext();
 
+  // Process returning OAuth callback parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const oauthProvider = urlParams.get('oauth_provider');
+  const oauthError = urlParams.get('oauth_error');
+
+  if (oauthError) {
+    alert('OAuth Authentication Alert: ' + decodeURIComponent(oauthError));
+    window.history.replaceState({}, document.title, window.location.pathname + '#auth');
+  } else if (oauthProvider) {
+    const username = urlParams.get('username');
+    const email = urlParams.get('email');
+    const name = urlParams.get('name');
+    const avatar = urlParams.get('avatar');
+    const passwordHash = urlParams.get('passwordHash');
+
+    if (username && passwordHash) {
+      completeOAuthLogin({
+        username,
+        email,
+        name: name || username,
+        provider: oauthProvider,
+        providerId: `${oauthProvider}_${username}`,
+        passwordHash,
+        avatarUrl: avatar
+      });
+      window.history.replaceState({}, document.title, window.location.pathname + '#vault');
+    }
+  }
+
   // Initialize DB
   initDatabase().then(() => {
     checkDBStatus().then(() => {
@@ -1951,13 +1961,59 @@ document.addEventListener('DOMContentLoaded', () => {
       if (savedUser) {
         state.passwordHash = savedHash;
         loginUser(savedUser);
-      } else {
+      } else if (!oauthProvider) {
         // Force Login Overlay
         const overlay = document.getElementById('masterLoginOverlay');
         overlay.classList.add('open');
         overlay.style.display = 'flex';
         switchAuthTab('signin');
       }
+
+      // Initialize AI Security Copilot module
+      import('./js/security-copilot.js').then(({ SecurityCopilot }) => {
+        const dbHelper = {
+          async getDb() { return state.db || await initDatabase(); },
+          async appendAuditLog(entry) {
+            if (typeof logAuditEvent === 'function') logAuditEvent(entry.action, entry.details, entry.severity);
+          },
+          async getLastAuditLogs(limit = 10) {
+            return (state.auditLogs || []).slice(-limit);
+          },
+          async getAllFromStore(storeName) {
+            return new Promise((res) => {
+              if (!state.db) return res([]);
+              try {
+                const tx = state.db.transaction(storeName, 'readonly');
+                const req = tx.objectStore(storeName).getAll();
+                req.onsuccess = () => res(req.result || []);
+                req.onerror = () => res([]);
+              } catch (e) { res([]); }
+            });
+          },
+          async putInStore(storeName, item) {
+            if (!state.db) return;
+            try {
+              const tx = state.db.transaction(storeName, 'readwrite');
+              tx.objectStore(storeName).add(item);
+            } catch (e) { console.warn(e); }
+          },
+          async clearStore(storeName) {
+            if (!state.db) return;
+            try {
+              const tx = state.db.transaction(storeName, 'readwrite');
+              tx.objectStore(storeName).clear();
+            } catch (e) { console.warn(e); }
+          }
+        };
+
+        window.securityCopilotInstance = new SecurityCopilot(dbHelper, {
+          encryptFile: async (blob, filename) => {
+            state.selectedFile = new File([blob], filename, { type: blob.type });
+            state.mode = 'encrypt';
+            await processFile();
+          }
+        });
+      }).catch(err => console.info('Using native Copilot streaming engine:', err));
     });
   });
 
@@ -2988,40 +3044,67 @@ async function sendAiMessage() {
 
   try {
     const localKey = localStorage.getItem('sv_gemini_api_key');
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-    if (localKey) {
-      headers['X-Gemini-Key'] = localKey;
-    }
+    const headers = { 'Content-Type': 'application/json' };
+    if (localKey) headers['X-Gemini-Key'] = localKey;
 
-    const response = await fetch('/api/chat', {
+    const response = await fetch('/api/v1/copilot/chat/stream', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
-        messages: copilotHistory
+        prompt: text,
+        history: copilotHistory.slice(0, -1)
       })
     });
 
     typingMsg.remove();
 
     if (!response.ok) {
+      if (response.status === 429) {
+        throw new Error("Quota exceeded (HTTP 429): Rate Limiter Active. Please wait before sending more requests.");
+      }
       throw new Error('API error: ' + response.status);
     }
 
-    const data = await response.json();
-    const replyText = data.choices?.[0]?.message?.content || 'Error generating AI response.';
-    
-    copilotHistory.push({ role: 'assistant', content: replyText });
-
     const sysMsg = document.createElement('div');
     sysMsg.className = 'ai-msg ai-sys';
-    const parsedText = window.parseChatMarkdown ? window.parseChatMarkdown(replyText) : replyText;
-    sysMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">${parsedText}</div>`;
+    const avatarHtml = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div>`;
+    const bubble = document.createElement('div');
+    bubble.className = 'ai-bubble';
+    sysMsg.appendChild(document.createRange().createContextualFragment(avatarHtml));
+    sysMsg.appendChild(bubble);
     chat.appendChild(sysMsg);
-    chat.scrollTop = chat.scrollHeight;
+
+    let fullReply = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(payload);
+            if (parsed.text) {
+              fullReply += parsed.text;
+              bubble.innerHTML = window.parseChatMarkdown ? window.parseChatMarkdown(fullReply) : fullReply;
+              chat.scrollTop = chat.scrollHeight;
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    copilotHistory.push({ role: 'assistant', content: fullReply });
   } catch (error) {
-    typingMsg.remove();
+    if (typingMsg && typingMsg.parentNode) typingMsg.remove();
     const errorMsg = document.createElement('div');
     errorMsg.className = 'ai-msg ai-sys';
     errorMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">⚠️ <strong>Error connecting to AI Copilot</strong>: ${error.message}</div>`;

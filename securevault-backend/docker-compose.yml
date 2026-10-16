@@ -1,0 +1,27 @@
+services:
+  api:
+    build: .
+    container_name: securevault_api
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - REDIS_URL=redis://redis:6379/0
+      - RATE_LIMIT_REQUESTS=20
+      - RATE_LIMIT_WINDOW_SECONDS=60
+      - ALLOWED_ORIGINS=https://securevault-ai-two.vercel.app,http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: securevault_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5

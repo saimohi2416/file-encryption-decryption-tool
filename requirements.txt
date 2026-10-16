@@ -1,0 +1,10 @@
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic-settings>=2.4.0
+google-genai>=0.1.1
+redis>=5.0.0
+mcp>=1.0.0
+fido2>=1.1.0
+websockets>=12.0
+pyjwt>=2.8.0
+httpx>=0.27.0
