@@ -278,7 +278,7 @@ function initDatabase() {
         return;
       }
       
-      const request = indexedDB.open('securevault_db', 1);
+      const request = indexedDB.open('securevault_db', 2);
 
       request.onupgradeneeded = (e) => {
         const db = e.target.result;
@@ -293,6 +293,14 @@ function initDatabase() {
         
         if (!db.objectStoreNames.contains('virtual_files')) {
           db.createObjectStore('virtual_files', { keyPath: 'id', autoIncrement: true });
+        }
+
+        if (!db.objectStoreNames.contains('audit_logs')) {
+          db.createObjectStore('audit_logs', { keyPath: 'id', autoIncrement: true });
+        }
+
+        if (!db.objectStoreNames.contains('copilot_history')) {
+          db.createObjectStore('copilot_history', { keyPath: 'id', autoIncrement: true });
         }
       };
 
@@ -458,7 +466,7 @@ async function handleAuthentication() {
   if (state.cloudSync) {
     if (currentAuthTab === 'signin') {
       try {
-        const res = await fetch('/api/db-sync?action=signin', {
+        const res = await fetch(getDbSyncEndpoint('signin'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, passwordHash })
@@ -492,7 +500,7 @@ async function handleAuthentication() {
         return;
       }
       try {
-        const res = await fetch('/api/db-sync?action=signup', {
+        const res = await fetch(getDbSyncEndpoint('signup'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, passwordHash })
@@ -584,31 +592,9 @@ async function deriveOAuthPasswordHash(keyString) {
 }
 
 function handleGoogleSignIn() {
-  if (window.google && window.google.accounts && window.google.accounts.id && window.GOOGLE_CLIENT_ID) {
-    try {
-      google.accounts.id.initialize({
-        client_id: window.GOOGLE_CLIENT_ID,
-        callback: async (response) => {
-          if (response && response.credential) {
-            const base64Url = response.credential.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-            const payload = JSON.parse(jsonPayload);
-            const email = payload.email || 'google.user@gmail.com';
-            const name = payload.name || email.split('@')[0];
-            const avatarUrl = payload.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`;
-            
-            confirmGoogleAccount(email, name, avatarUrl);
-          }
-        }
-      });
-      google.accounts.id.prompt();
-    } catch (err) {
-      console.warn('Google Identity prompt error, displaying account selector modal.', err);
-    }
-  }
-  
-  document.getElementById('googleAuthModal').style.display = 'flex';
+  const gBtn = document.getElementById('googleSignInBtn');
+  if (gBtn) gBtn.classList.add('loading');
+  window.location.href = '/api/v1/auth/google/login';
 }
 
 async function confirmGoogleAccount(email, name, avatarUrl) {
@@ -639,14 +625,9 @@ function submitCustomGoogleLogin() {
 }
 
 function handleGitHubSignIn() {
-  if (window.GITHUB_CLIENT_ID) {
-    const redirectUri = window.location.origin + window.location.pathname;
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${window.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`;
-    window.location.href = githubAuthUrl;
-    return;
-  }
-  
-  document.getElementById('githubAuthModal').style.display = 'flex';
+  const ghBtn = document.getElementById('githubSignInBtn');
+  if (ghBtn) ghBtn.classList.add('loading');
+  window.location.href = '/api/v1/auth/github/login';
 }
 
 async function confirmGitHubAccount(githubUsername, email, avatarUrl) {
@@ -694,7 +675,7 @@ async function completeOAuthLogin(userPayload) {
 
   if (state.cloudSync) {
     try {
-      await fetch('/api/db-sync?action=oauth_login', {
+      await fetch(getDbSyncEndpoint('oauth_login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, provider, providerId, passwordHash, avatarUrl })
@@ -1942,6 +1923,35 @@ function checkSecureContext() {
 document.addEventListener('DOMContentLoaded', () => {
   checkSecureContext();
 
+  // Process returning OAuth callback parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const oauthProvider = urlParams.get('oauth_provider');
+  const oauthError = urlParams.get('oauth_error');
+
+  if (oauthError) {
+    alert('OAuth Authentication Alert: ' + decodeURIComponent(oauthError));
+    window.history.replaceState({}, document.title, window.location.pathname + '#auth');
+  } else if (oauthProvider) {
+    const username = urlParams.get('username');
+    const email = urlParams.get('email');
+    const name = urlParams.get('name');
+    const avatar = urlParams.get('avatar');
+    const passwordHash = urlParams.get('passwordHash');
+
+    if (username && passwordHash) {
+      completeOAuthLogin({
+        username,
+        email,
+        name: name || username,
+        provider: oauthProvider,
+        providerId: `${oauthProvider}_${username}`,
+        passwordHash,
+        avatarUrl: avatar
+      });
+      window.history.replaceState({}, document.title, window.location.pathname + '#vault');
+    }
+  }
+
   // Initialize DB
   initDatabase().then(() => {
     checkDBStatus().then(() => {
@@ -1951,13 +1961,59 @@ document.addEventListener('DOMContentLoaded', () => {
       if (savedUser) {
         state.passwordHash = savedHash;
         loginUser(savedUser);
-      } else {
+      } else if (!oauthProvider) {
         // Force Login Overlay
         const overlay = document.getElementById('masterLoginOverlay');
         overlay.classList.add('open');
         overlay.style.display = 'flex';
         switchAuthTab('signin');
       }
+
+      // Initialize AI Security Copilot module
+      import('./js/security-copilot.js').then(({ SecurityCopilot }) => {
+        const dbHelper = {
+          async getDb() { return state.db || await initDatabase(); },
+          async appendAuditLog(entry) {
+            if (typeof logAuditEvent === 'function') logAuditEvent(entry.action, entry.details, entry.severity);
+          },
+          async getLastAuditLogs(limit = 10) {
+            return (state.auditLogs || []).slice(-limit);
+          },
+          async getAllFromStore(storeName) {
+            return new Promise((res) => {
+              if (!state.db) return res([]);
+              try {
+                const tx = state.db.transaction(storeName, 'readonly');
+                const req = tx.objectStore(storeName).getAll();
+                req.onsuccess = () => res(req.result || []);
+                req.onerror = () => res([]);
+              } catch (e) { res([]); }
+            });
+          },
+          async putInStore(storeName, item) {
+            if (!state.db) return;
+            try {
+              const tx = state.db.transaction(storeName, 'readwrite');
+              tx.objectStore(storeName).add(item);
+            } catch (e) { console.warn(e); }
+          },
+          async clearStore(storeName) {
+            if (!state.db) return;
+            try {
+              const tx = state.db.transaction(storeName, 'readwrite');
+              tx.objectStore(storeName).clear();
+            } catch (e) { console.warn(e); }
+          }
+        };
+
+        window.securityCopilotInstance = new SecurityCopilot(dbHelper, {
+          encryptFile: async (blob, filename) => {
+            state.selectedFile = new File([blob], filename, { type: blob.type });
+            state.mode = 'encrypt';
+            await processFile();
+          }
+        });
+      }).catch(err => console.info('Using native Copilot streaming engine:', err));
     });
   });
 
@@ -2961,19 +3017,40 @@ let copilotHistory = [
 
 function handleAiKey(e) {
   if (e.key === 'Enter') sendAiMessage();
+function quickPrompt(promptText) {
+  const input = document.getElementById('aiInput') || document.getElementById('copilot-chat-input');
+  if (input) {
+    input.value = promptText;
+    sendAiMessage();
+  }
+}
+
+function clearAiChat() {
+  const chat = document.getElementById('aiChatWindow') || document.getElementById('copilot-chat-container');
+  if (chat) {
+    chat.innerHTML = `
+      <div class="ai-msg ai-sys">
+        <div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div>
+        <div class="ai-bubble">Secure AI Security Copilot initialized. I can analyze cryptographic file parameters, audit anomalies, or recommend enterprise firewall rules. How can I assist you today?</div>
+      </div>
+    `;
+  }
+  copilotHistory = [];
 }
 
 async function sendAiMessage() {
-  const input = document.getElementById('aiInput');
+  const input = document.getElementById('aiInput') || document.getElementById('copilot-chat-input');
+  if (!input) return;
   const text = input.value.trim();
   if (!text) return;
   input.value = '';
 
-  const chat = document.getElementById('aiChatWindow');
-  
+  const chat = document.getElementById('aiChatWindow') || document.getElementById('copilot-chat-container');
+  if (!chat) return;
+
   const userMsg = document.createElement('div');
   userMsg.className = 'ai-msg ai-user';
-  userMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div class="ai-bubble">${text}</div>`;
+  userMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div class="ai-bubble">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
   chat.appendChild(userMsg);
   chat.scrollTop = chat.scrollHeight;
 
@@ -2982,49 +3059,146 @@ async function sendAiMessage() {
   const typingMsg = document.createElement('div');
   typingMsg.className = 'ai-msg ai-sys';
   typingMsg.id = 'copilot-typing';
-  typingMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble" style="display:flex; gap:4px; align-items:center; padding:4px 8px;"><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#94a3b8; border-radius:50%; -webkit-animation-delay:-0.32s; animation-delay:-0.32s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#94a3b8; border-radius:50%; -webkit-animation-delay:-0.16s; animation-delay:-0.16s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#94a3b8; border-radius:50%;"></span></div>`;
+  typingMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble" style="display:flex; gap:6px; align-items:center; padding:8px 12px;"><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#38bdf8; border-radius:50%; -webkit-animation-delay:-0.32s; animation-delay:-0.32s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#38bdf8; border-radius:50%; -webkit-animation-delay:-0.16s; animation-delay:-0.16s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#38bdf8; border-radius:50%;"></span><span style="font-size:12px; color:var(--text-muted); margin-left:6px; font-family:monospace;">Copilot thinking...</span></div>`;
   chat.appendChild(typingMsg);
   chat.scrollTop = chat.scrollHeight;
 
   try {
     const localKey = localStorage.getItem('sv_gemini_api_key');
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-    if (localKey) {
-      headers['X-Gemini-Key'] = localKey;
-    }
+    const headers = { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json' };
+    if (localKey) headers['X-Gemini-Key'] = localKey;
 
-    const response = await fetch('/api/chat', {
+    let response = await fetch('/api/v1/copilot/chat/stream', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
-        messages: copilotHistory
+        prompt: text,
+        history: copilotHistory.slice(0, -1)
       })
     });
+
+    if (!response.ok && response.status === 404) {
+      response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          messages: copilotHistory,
+          stream: true
+        })
+      });
+    }
 
     typingMsg.remove();
 
     if (!response.ok) {
+      if (response.status === 429) {
+        throw new Error("Quota exceeded (HTTP 429): Rate Limiter Active. Please wait a minute before querying again.");
+      }
       throw new Error('API error: ' + response.status);
     }
 
-    const data = await response.json();
-    const replyText = data.choices?.[0]?.message?.content || 'Error generating AI response.';
-    
-    copilotHistory.push({ role: 'assistant', content: replyText });
-
     const sysMsg = document.createElement('div');
     sysMsg.className = 'ai-msg ai-sys';
-    const parsedText = window.parseChatMarkdown ? window.parseChatMarkdown(replyText) : replyText;
-    sysMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">${parsedText}</div>`;
+    const avatarHtml = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div>`;
+    const bubble = document.createElement('div');
+    bubble.className = 'ai-bubble';
+    bubble.style.maxWidth = '100%';
+    sysMsg.appendChild(document.createRange().createContextualFragment(avatarHtml));
+    sysMsg.appendChild(bubble);
     chat.appendChild(sysMsg);
-    chat.scrollTop = chat.scrollHeight;
+
+    let fullReply = '';
+    const contentType = response.headers.get('content-type') || '';
+
+    if (contentType.includes('text/event-stream') && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const payload = line.slice(6).trim();
+            if (payload === '[DONE]') break;
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed.text) {
+                fullReply += parsed.text;
+                bubble.innerHTML = window.parseChatMarkdown ? window.parseChatMarkdown(fullReply) : fullReply;
+                chat.scrollTop = chat.scrollHeight;
+              }
+            } catch (e) {
+              if (payload && !payload.startsWith('{')) {
+                fullReply += payload;
+                bubble.innerHTML = window.parseChatMarkdown ? window.parseChatMarkdown(fullReply) : fullReply;
+                chat.scrollTop = chat.scrollHeight;
+              }
+            }
+          }
+        }
+      }
+    } else {
+      const rawText = await response.text();
+      try {
+        const data = JSON.parse(rawText);
+        fullReply = data.choices?.[0]?.message?.content || data.reply || data.text || rawText;
+      } catch (e) {
+        if (rawText.startsWith('data: ')) {
+          fullReply = rawText.split('\n')
+            .filter(l => l.startsWith('data: ') && !l.includes('[DONE]'))
+            .map(l => {
+              try { return JSON.parse(l.slice(6).trim()).text || ''; } catch(_) { return ''; }
+            }).join('');
+        } else {
+          fullReply = rawText;
+        }
+      }
+      bubble.innerHTML = window.parseChatMarkdown ? window.parseChatMarkdown(fullReply) : fullReply;
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Attach contextual action buttons below response
+    const actionWrap = document.createElement('div');
+    actionWrap.style.cssText = 'display:flex; gap:8px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08); flex-wrap:wrap;';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'action-btn-sm';
+    copyBtn.style.cssText = 'background:rgba(255,255,255,0.05); font-size:11px; padding:3px 8px; border:1px solid var(--border);';
+    copyBtn.innerHTML = '📋 Copy';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(fullReply);
+      copyBtn.innerHTML = '✅ Copied';
+      setTimeout(() => copyBtn.innerHTML = '📋 Copy', 2000);
+    };
+    actionWrap.appendChild(copyBtn);
+
+    const encryptBtn = document.createElement('button');
+    encryptBtn.className = 'action-btn-sm';
+    encryptBtn.style.cssText = 'background:rgba(6,182,212,0.15); color:#38bdf8; font-size:11px; padding:3px 8px; border:1px solid rgba(6,182,212,0.3);';
+    encryptBtn.innerHTML = '🔒 Encrypt Note to Vault';
+    encryptBtn.onclick = async () => {
+      const filename = `copilot-note-${Date.now()}.md`;
+      const blob = new Blob([fullReply], { type: 'text/markdown' });
+      state.selectedFile = new File([blob], filename, { type: 'text/markdown' });
+      state.mode = 'encrypt';
+      switchTab('vault');
+      alert(`Prepared note '${filename}' for AES-256-GCM encryption in File Vault.`);
+    };
+    actionWrap.appendChild(encryptBtn);
+
+    bubble.appendChild(actionWrap);
+    copilotHistory.push({ role: 'assistant', content: fullReply });
   } catch (error) {
-    typingMsg.remove();
+    if (typingMsg && typingMsg.parentNode) typingMsg.remove();
     const errorMsg = document.createElement('div');
     errorMsg.className = 'ai-msg ai-sys';
-    errorMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">⚠️ <strong>Error connecting to AI Copilot</strong>: ${error.message}</div>`;
+    errorMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble" style="border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.08);">⚠️ <strong>Copilot Notice</strong>: ${error.message}</div>`;
     chat.appendChild(errorMsg);
     chat.scrollTop = chat.scrollHeight;
     console.error('AI Security Copilot Error:', error);
@@ -3070,46 +3244,149 @@ function liftLockdown() {
   }
 }
 
-// ── MongoDB Database Cloud Sync Functions ───────────────────────────────────
+// ── MongoDB Database & Local Database Management Functions ───────────────────
+
+function getDbSyncEndpoint(action) {
+  const base = window.CUSTOM_API_BASE || '';
+  return `${base}/api/db-sync?action=${action}`;
+}
 
 async function checkDBStatus() {
   const indicator = document.getElementById('dbStatusIndicator');
+  const modalIndicator = document.getElementById('dbModalStatusDetails');
+  
+  let endpoint = getDbSyncEndpoint('status');
+  
   try {
-    const res = await fetch('/api/db-sync?action=status');
-    if (!res.ok) throw new Error('API status check failed');
-    const data = await res.json();
-    if (data.configured && data.connected) {
-      state.cloudSync = true;
-      if (indicator) {
-        indicator.innerHTML = `<span class="pulse-dot" style="background:#10b981; width:8px; height:8px; box-shadow: 0 0 8px #10b981;"></span> DB: MongoDB Cloud (Synced)`;
-        indicator.title = "Connected to MongoDB Cloud database. Your profiles, virtual files and ledger logs are synced.";
+    let res;
+    try {
+      res = await fetch(endpoint);
+    } catch (netErr) {
+      if (!window.CUSTOM_API_BASE && window.location.hostname.includes('surge.sh')) {
+        const fallbackUrl = 'https://securevault-enterprise.vercel.app/api/db-sync?action=status';
+        res = await fetch(fallbackUrl);
+        if (res && res.ok) {
+          window.CUSTOM_API_BASE = 'https://securevault-enterprise.vercel.app';
+        }
       }
-      return true;
-    } else {
-      state.cloudSync = false;
-      if (indicator) {
-        indicator.innerHTML = `<span class="pulse-dot" style="background:#f59e0b; width:8px; height:8px; animation: none;"></span> DB: Local (IndexedDB)`;
-        indicator.title = data.configured 
-          ? "MongoDB is configured but connection failed. Falling back to local database."
-          : "MongoDB is not configured. Add MONGODB_URI to Vercel to enable Cloud Sync.";
+    }
+
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data.configured && data.connected) {
+        state.cloudSync = true;
+        if (indicator) {
+          indicator.innerHTML = `<span class="pulse-dot" style="background:#10b981; width:8px; height:8px; box-shadow: 0 0 8px #10b981;"></span> DB: MongoDB Cloud (Synced)`;
+          indicator.title = "Connected to MongoDB Cloud database. Click to open Database Settings.";
+        }
+        if (modalIndicator) {
+          modalIndicator.style.background = "rgba(16,185,129,0.15)";
+          modalIndicator.style.borderColor = "rgba(16,185,129,0.3)";
+          modalIndicator.style.color = "#10b981";
+          modalIndicator.innerHTML = "🟢 Connected to MongoDB Cloud Database (Active & Synced)";
+        }
+        return true;
+      } else {
+        state.cloudSync = false;
+        if (indicator) {
+          indicator.innerHTML = `<span class="pulse-dot" style="background:#f59e0b; width:8px; height:8px; animation: none;"></span> DB: Local (IndexedDB)`;
+          indicator.title = data.configured 
+            ? "MongoDB is configured but connection failed. Click to manage database."
+            : "Running on persistent Local IndexedDB engine. Click to manage database.";
+        }
+        if (modalIndicator) {
+          modalIndicator.style.background = "rgba(245,158,11,0.15)";
+          modalIndicator.style.borderColor = "rgba(245,158,11,0.3)";
+          modalIndicator.style.color = "#f59e0b";
+          modalIndicator.innerHTML = "🟡 Engine: Persistent Client-Side IndexedDB Database";
+        }
+        return false;
       }
-      return false;
     }
   } catch (e) {
-    console.warn("DB status check failed:", e);
-    state.cloudSync = false;
-    if (indicator) {
-      indicator.innerHTML = `<span class="pulse-dot" style="background:#ef4444; width:8px; height:8px; animation: none;"></span> DB: Status Error`;
-      indicator.title = "Failed to communicate with DB sync API. Running in local-only mode.";
-    }
-    return false;
+    console.warn("DB status check warning:", e);
+  }
+
+  state.cloudSync = false;
+  if (indicator) {
+    indicator.innerHTML = `<span class="pulse-dot" style="background:#6366f1; width:8px; height:8px; animation: none;"></span> DB: Local (IndexedDB)`;
+    indicator.title = "Running on client-side IndexedDB database. Click to open Database Manager.";
+  }
+  if (modalIndicator) {
+    modalIndicator.style.background = "rgba(99,102,241,0.15)";
+    modalIndicator.style.borderColor = "rgba(99,102,241,0.3)";
+    modalIndicator.style.color = "#a5b4fc";
+    modalIndicator.innerHTML = "🔵 Active Engine: Offline-First IndexedDB Local Vault Database";
+  }
+  return false;
+}
+
+function openDatabaseModal() {
+  const modal = document.getElementById('databaseModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    checkDBStatus();
+    updateDatabaseModalStats();
+  }
+}
+
+function closeDatabaseModal() {
+  const modal = document.getElementById('databaseModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function updateDatabaseModalStats() {
+  const userEl = document.getElementById('dbModalCurrentUser');
+  const providerEl = document.getElementById('dbModalAuthProvider');
+  const fileCountEl = document.getElementById('dbModalFileCount');
+  
+  if (userEl) userEl.textContent = state.currentUser || 'Guest User';
+  if (providerEl) {
+    const provider = sessionStorage.getItem('authProvider') || 'local';
+    if (provider === 'google') providerEl.innerHTML = '<span class="auth-provider-badge google">Google OAuth</span>';
+    else if (provider === 'github') providerEl.innerHTML = '<span class="auth-provider-badge github">GitHub OAuth</span>';
+    else providerEl.innerHTML = '<span class="auth-provider-badge local">Password</span>';
+  }
+  
+  if (fileCountEl && state.db) {
+    try {
+      const tx = state.db.transaction('virtual_files', 'readonly');
+      const store = tx.objectStore('virtual_files');
+      const req = store.count();
+      req.onsuccess = () => {
+        fileCountEl.textContent = req.result + ' items stored';
+      };
+    } catch(e) {}
+  }
+}
+
+async function testDatabaseConnection() {
+  addLog('Testing database connection health...', 'info');
+  const isConnected = await checkDBStatus();
+  if (isConnected) {
+    addLog('MongoDB Cloud database connection verified successfully!', 'success');
+    alert('MongoDB Cloud database connection verified successfully!');
+  } else {
+    addLog('Local IndexedDB database engine is active and ready.', 'info');
+    alert('Client-side IndexedDB database is active and storing records securely!');
+  }
+}
+
+async function triggerManualDBSync() {
+  if (state.currentUser && state.passwordHash) {
+    addLog('Initiating manual database sync...', 'info');
+    await syncFromCloud(state.currentUser, state.passwordHash);
+    updateDatabaseModalStats();
+    alert('Database sync complete!');
+  } else {
+    alert('Please log in with Google, GitHub, or Password to sync database.');
   }
 }
 
 async function syncFromCloud(username, passwordHash) {
   try {
-    addLog('Syncing database with MongoDB Cloud...', 'info');
-    const res = await fetch('/api/db-sync?action=get_data', {
+    addLog('Syncing database with Cloud/Local DB...', 'info');
+    const res = await fetch(getDbSyncEndpoint('get_data'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, passwordHash })
@@ -3157,7 +3434,7 @@ async function syncFromCloud(username, passwordHash) {
         
         deleteTx.oncomplete = () => {
           fwRenderFiles();
-          addLog('Virtual Workspace synced with cloud.', 'success');
+          addLog('Virtual Workspace synced with cloud database.', 'success');
         };
       }
     };
@@ -3186,14 +3463,14 @@ async function syncFromCloud(username, passwordHash) {
         
         deleteTx.oncomplete = () => {
           initLedgerData();
-          addLog('Cryptographic Ledger synced with cloud.', 'success');
+          addLog('Cryptographic Ledger synced with database.', 'success');
         };
       }
     };
 
   } catch (err) {
     console.error('Cloud sync error:', err);
-    addLog('Could not sync with MongoDB. Running with local cache.', 'warning');
+    addLog('Could not sync with MongoDB Cloud. Running with local database cache.', 'warning');
     fwRenderFiles();
     initLedgerData();
   }
@@ -3213,7 +3490,7 @@ async function syncSaveFile(entry) {
       mimeType: entry.mimeType
     };
     
-    const res = await fetch('/api/db-sync?action=save_file', {
+    const res = await fetch(getDbSyncEndpoint('save_file'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3231,7 +3508,7 @@ async function syncSaveFile(entry) {
 async function syncAddLedger(entry) {
   if (!state.cloudSync || !state.currentUser || !state.passwordHash) return;
   try {
-    const res = await fetch('/api/db-sync?action=add_ledger', {
+    const res = await fetch(getDbSyncEndpoint('add_ledger'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3249,7 +3526,7 @@ async function syncAddLedger(entry) {
 async function syncClearLedger() {
   if (!state.cloudSync || !state.currentUser || !state.passwordHash) return;
   try {
-    const res = await fetch('/api/db-sync?action=clear_ledger', {
+    const res = await fetch(getDbSyncEndpoint('clear_ledger'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

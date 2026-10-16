@@ -3017,19 +3017,40 @@ let copilotHistory = [
 
 function handleAiKey(e) {
   if (e.key === 'Enter') sendAiMessage();
+function quickPrompt(promptText) {
+  const input = document.getElementById('aiInput') || document.getElementById('copilot-chat-input');
+  if (input) {
+    input.value = promptText;
+    sendAiMessage();
+  }
+}
+
+function clearAiChat() {
+  const chat = document.getElementById('aiChatWindow') || document.getElementById('copilot-chat-container');
+  if (chat) {
+    chat.innerHTML = `
+      <div class="ai-msg ai-sys">
+        <div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div>
+        <div class="ai-bubble">Secure AI Security Copilot initialized. I can analyze cryptographic file parameters, audit anomalies, or recommend enterprise firewall rules. How can I assist you today?</div>
+      </div>
+    `;
+  }
+  copilotHistory = [];
 }
 
 async function sendAiMessage() {
-  const input = document.getElementById('aiInput');
+  const input = document.getElementById('aiInput') || document.getElementById('copilot-chat-input');
+  if (!input) return;
   const text = input.value.trim();
   if (!text) return;
   input.value = '';
 
-  const chat = document.getElementById('aiChatWindow');
-  
+  const chat = document.getElementById('aiChatWindow') || document.getElementById('copilot-chat-container');
+  if (!chat) return;
+
   const userMsg = document.createElement('div');
   userMsg.className = 'ai-msg ai-user';
-  userMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div class="ai-bubble">${text}</div>`;
+  userMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div class="ai-bubble">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
   chat.appendChild(userMsg);
   chat.scrollTop = chat.scrollHeight;
 
@@ -3038,16 +3059,16 @@ async function sendAiMessage() {
   const typingMsg = document.createElement('div');
   typingMsg.className = 'ai-msg ai-sys';
   typingMsg.id = 'copilot-typing';
-  typingMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble" style="display:flex; gap:4px; align-items:center; padding:4px 8px;"><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#94a3b8; border-radius:50%; -webkit-animation-delay:-0.32s; animation-delay:-0.32s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#94a3b8; border-radius:50%; -webkit-animation-delay:-0.16s; animation-delay:-0.16s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#94a3b8; border-radius:50%;"></span></div>`;
+  typingMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble" style="display:flex; gap:6px; align-items:center; padding:8px 12px;"><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#38bdf8; border-radius:50%; -webkit-animation-delay:-0.32s; animation-delay:-0.32s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#38bdf8; border-radius:50%; -webkit-animation-delay:-0.16s; animation-delay:-0.16s;"></span><span style="animation: sv-typing 1.4s infinite ease-in-out both; width:6px; height:6px; background:#38bdf8; border-radius:50%;"></span><span style="font-size:12px; color:var(--text-muted); margin-left:6px; font-family:monospace;">Copilot thinking...</span></div>`;
   chat.appendChild(typingMsg);
   chat.scrollTop = chat.scrollHeight;
 
   try {
     const localKey = localStorage.getItem('sv_gemini_api_key');
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json' };
     if (localKey) headers['X-Gemini-Key'] = localKey;
 
-    const response = await fetch('/api/v1/copilot/chat/stream', {
+    let response = await fetch('/api/v1/copilot/chat/stream', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
@@ -3056,11 +3077,22 @@ async function sendAiMessage() {
       })
     });
 
+    if (!response.ok && response.status === 404) {
+      response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          messages: copilotHistory,
+          stream: true
+        })
+      });
+    }
+
     typingMsg.remove();
 
     if (!response.ok) {
       if (response.status === 429) {
-        throw new Error("Quota exceeded (HTTP 429): Rate Limiter Active. Please wait before sending more requests.");
+        throw new Error("Quota exceeded (HTTP 429): Rate Limiter Active. Please wait a minute before querying again.");
       }
       throw new Error('API error: ' + response.status);
     }
@@ -3070,44 +3102,103 @@ async function sendAiMessage() {
     const avatarHtml = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div>`;
     const bubble = document.createElement('div');
     bubble.className = 'ai-bubble';
+    bubble.style.maxWidth = '100%';
     sysMsg.appendChild(document.createRange().createContextualFragment(avatarHtml));
     sysMsg.appendChild(bubble);
     chat.appendChild(sysMsg);
 
     let fullReply = '';
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    const contentType = response.headers.get('content-type') || '';
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
+    if (contentType.includes('text/event-stream') && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const payload = line.slice(6).trim();
-          if (payload === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(payload);
-            if (parsed.text) {
-              fullReply += parsed.text;
-              bubble.innerHTML = window.parseChatMarkdown ? window.parseChatMarkdown(fullReply) : fullReply;
-              chat.scrollTop = chat.scrollHeight;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const payload = line.slice(6).trim();
+            if (payload === '[DONE]') break;
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed.text) {
+                fullReply += parsed.text;
+                bubble.innerHTML = window.parseChatMarkdown ? window.parseChatMarkdown(fullReply) : fullReply;
+                chat.scrollTop = chat.scrollHeight;
+              }
+            } catch (e) {
+              if (payload && !payload.startsWith('{')) {
+                fullReply += payload;
+                bubble.innerHTML = window.parseChatMarkdown ? window.parseChatMarkdown(fullReply) : fullReply;
+                chat.scrollTop = chat.scrollHeight;
+              }
             }
-          } catch (e) {}
+          }
         }
       }
+    } else {
+      const rawText = await response.text();
+      try {
+        const data = JSON.parse(rawText);
+        fullReply = data.choices?.[0]?.message?.content || data.reply || data.text || rawText;
+      } catch (e) {
+        if (rawText.startsWith('data: ')) {
+          fullReply = rawText.split('\n')
+            .filter(l => l.startsWith('data: ') && !l.includes('[DONE]'))
+            .map(l => {
+              try { return JSON.parse(l.slice(6).trim()).text || ''; } catch(_) { return ''; }
+            }).join('');
+        } else {
+          fullReply = rawText;
+        }
+      }
+      bubble.innerHTML = window.parseChatMarkdown ? window.parseChatMarkdown(fullReply) : fullReply;
+      chat.scrollTop = chat.scrollHeight;
     }
 
+    // Attach contextual action buttons below response
+    const actionWrap = document.createElement('div');
+    actionWrap.style.cssText = 'display:flex; gap:8px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08); flex-wrap:wrap;';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'action-btn-sm';
+    copyBtn.style.cssText = 'background:rgba(255,255,255,0.05); font-size:11px; padding:3px 8px; border:1px solid var(--border);';
+    copyBtn.innerHTML = '📋 Copy';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(fullReply);
+      copyBtn.innerHTML = '✅ Copied';
+      setTimeout(() => copyBtn.innerHTML = '📋 Copy', 2000);
+    };
+    actionWrap.appendChild(copyBtn);
+
+    const encryptBtn = document.createElement('button');
+    encryptBtn.className = 'action-btn-sm';
+    encryptBtn.style.cssText = 'background:rgba(6,182,212,0.15); color:#38bdf8; font-size:11px; padding:3px 8px; border:1px solid rgba(6,182,212,0.3);';
+    encryptBtn.innerHTML = '🔒 Encrypt Note to Vault';
+    encryptBtn.onclick = async () => {
+      const filename = `copilot-note-${Date.now()}.md`;
+      const blob = new Blob([fullReply], { type: 'text/markdown' });
+      state.selectedFile = new File([blob], filename, { type: 'text/markdown' });
+      state.mode = 'encrypt';
+      switchTab('vault');
+      alert(`Prepared note '${filename}' for AES-256-GCM encryption in File Vault.`);
+    };
+    actionWrap.appendChild(encryptBtn);
+
+    bubble.appendChild(actionWrap);
     copilotHistory.push({ role: 'assistant', content: fullReply });
   } catch (error) {
     if (typingMsg && typingMsg.parentNode) typingMsg.remove();
     const errorMsg = document.createElement('div');
     errorMsg.className = 'ai-msg ai-sys';
-    errorMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble">⚠️ <strong>Error connecting to AI Copilot</strong>: ${error.message}</div>`;
+    errorMsg.innerHTML = `<div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div><div class="ai-bubble" style="border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.08);">⚠️ <strong>Copilot Notice</strong>: ${error.message}</div>`;
     chat.appendChild(errorMsg);
     chat.scrollTop = chat.scrollHeight;
     console.error('AI Security Copilot Error:', error);

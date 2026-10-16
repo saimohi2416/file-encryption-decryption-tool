@@ -59,3 +59,15 @@ async def stream_copilot_response(prompt: str, history: List[ChatMessage]) -> As
         err_text = f"⚠️ **SecureVault AI Copilot Error**: {str(e)}"
         yield f"data: {json.dumps({'text': err_text})}\n\n"
         yield "data: [DONE]\n\n"
+
+async def get_copilot_json_response(prompt: str, history: List[ChatMessage] = None) -> str:
+    chunks = []
+    async for sse_chunk in stream_copilot_response(prompt, history or []):
+        if sse_chunk.startswith("data: ") and not sse_chunk.startswith("data: [DONE]"):
+            try:
+                data = json.loads(sse_chunk[6:].strip())
+                if "text" in data:
+                    chunks.append(data["text"])
+            except Exception:
+                pass
+    return "".join(chunks)

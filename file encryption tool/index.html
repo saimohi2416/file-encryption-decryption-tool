@@ -19,6 +19,9 @@
   <link rel="apple-touch-icon" href="icon.svg" />
   <!-- Google Identity Services SDK -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Markdown & DOMPurify for AI Copilot -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
 </head>
@@ -130,7 +133,7 @@
         <div class="status-indicator">
           <span class="pulse-dot" style="background:var(--accent);"></span> System Secured
         </div>
-        <div class="status-indicator" id="dbStatusIndicator" style="margin-top: 6px; font-size: 11px; opacity: 0.85;" title="Database Connectivity Status">
+        <div class="status-indicator" id="dbStatusIndicator" style="margin-top: 6px; font-size: 11px; opacity: 0.85; cursor: pointer;" title="Database Connectivity Status - Click to open Database Settings" onclick="openDatabaseModal()">
           <span class="pulse-dot" style="background:#94a3b8; width:8px; height:8px; animation: none;"></span> DB: Checking...
         </div>
       </div>
@@ -141,7 +144,19 @@
       <!-- Topbar -->
       <header class="topbar">
         <div class="topbar-title" id="topbarTitle">Dashboard / File Vault</div>
-        <div style="display:flex; gap:16px; align-items:center;">
+        <div style="display:flex; gap:12px; align-items:center;">
+          <button class="action-btn-sm" style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:var(--primary-light); display:flex; align-items:center; gap:6px;" onclick="openDatabaseModal()" title="Manage Database & Account Association">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 4.02 2 6.5s4.48 4.5 10 4.5 10-2.02 10-4.5S17.52 2 12 2z"/><path d="M2 6.5v11C2 20 6.48 22 12 22s10-2 10-4.5v-11"/></svg>
+            Database
+          </button>
+          <button class="action-btn-sm" style="background:rgba(234,67,53,0.15); border:1px solid rgba(234,67,53,0.3); color:#f87171; display:flex; align-items:center; gap:4px;" onclick="handleGoogleSignIn()" title="Sign in with Google">
+            <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9c-.4-.7-.6-1.5-.6-2.4z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/></svg>
+            Google
+          </button>
+          <button class="action-btn-sm" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; display:flex; align-items:center; gap:4px;" onclick="handleGitHubSignIn()" title="Sign in with GitHub">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+            GitHub
+          </button>
           <button class="action-btn-sm" style="background:var(--danger); color:white; border:none; box-shadow: 0 0 10px rgba(255,0,0,0.5);" onclick="triggerLockdown()">🚨 LOCKDOWN</button>
           <div class="header-badge">
             <span class="badge-dot"></span>
@@ -956,21 +971,62 @@
 
   <!-- Tab Content: AI Copilot -->
   <div id="content-ai" class="tab-content">
-    <div class="module-header">
-      <h2>AI Security Copilot</h2>
-      <p>Analyze files, detect anomalies, and generate secure cryptographic deeper notes.</p>
+    <div class="module-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#06b6d4; box-shadow:0 0 10px #06b6d4;"></span>
+          <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text);">AI Security Copilot</h2>
+          <span id="copilot-quota-badge" style="font-size:11px; font-family:monospace; color:#38bdf8; background:rgba(6,182,212,0.15); padding:2px 8px; border-radius:4px; border:1px solid rgba(6,182,212,0.3);">
+            20/20 queries remaining
+          </span>
+        </div>
+        <p style="color:var(--text-muted); font-size:13px; margin-top:4px;">Zero-knowledge SecOps copilot with live sanitized context & prompt analysis.</p>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:16px;">
+        <label style="display:flex; align-items:center; cursor:pointer; font-size:12px; color:var(--text-muted); gap:8px;">
+          <input type="checkbox" id="copilot-context-toggle" checked style="accent-color:var(--primary);" />
+          <span>🔗 Include Live Dashboard Context</span>
+        </label>
+        <button id="copilot-purge-btn" title="Purge Chat Memory" class="action-btn-sm" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; font-size:12px;">
+          🗑️ Purge Memory
+        </button>
+      </div>
     </div>
 
-    <div class="ai-container">
-      <div class="ai-chat-window" id="aiChatWindow">
+    <!-- Clickable Quick Prompt Chips -->
+    <div id="copilot-prompt-chips" style="display:flex; gap:8px; overflow-x:auto; padding:10px 0; margin-bottom:12px;">
+      <button type="button" class="copilot-chip action-btn-sm" style="background:rgba(6,182,212,0.1); border:1px solid rgba(6,182,212,0.3); color:#38bdf8; font-size:12px; white-space:nowrap; border-radius:16px; padding:4px 12px; cursor:pointer;" onclick="quickPrompt('🔍 Analyze loaded file entropy, SHA-256 hash, and cryptographic metadata')">
+        🔍 Analyze File Entropy & Hash
+      </button>
+      <button type="button" class="copilot-chip action-btn-sm" style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); color:var(--primary-light); font-size:12px; white-space:nowrap; border-radius:16px; padding:4px 12px; cursor:pointer;" onclick="quickPrompt('🛡️ Perform security audit on recent system events and anomaly logs')">
+        🛡️ Audit Security Logs
+      </button>
+      <button type="button" class="copilot-chip action-btn-sm" style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; font-size:12px; white-space:nowrap; border-radius:16px; padding:4px 12px; cursor:pointer;" onclick="quickPrompt('🧱 Recommend custom enterprise IP firewall rule based on threat telemetry')">
+        🧱 Recommend Firewall Rule
+      </button>
+      <button type="button" class="copilot-chip action-btn-sm" style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); color:#34d399; font-size:12px; white-space:nowrap; border-radius:16px; padding:4px 12px; cursor:pointer;" onclick="quickPrompt('🔐 Verify AES-256-GCM and PBKDF2 (600,000 iterations) NIST/OWASP compliance')">
+        🔐 Verify AES-256-GCM Compliance
+      </button>
+    </div>
+
+    <div class="ai-container" style="display:flex; flex-direction:column; height:540px; background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;">
+      <!-- Chat Message Stream Scroll Area -->
+      <div id="aiChatWindow" class="ai-chat-window" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px;">
         <div class="ai-msg ai-sys">
           <div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div>
-          <div class="ai-bubble">Secure AI Copilot initialized. I can analyze your files for embedded threats or help you encrypt deeper notes. How can I assist you today?</div>
+          <div class="ai-bubble">
+            <strong>SecureVault AI Security Copilot</strong> initialized.<br>
+            Connected to zero-knowledge SecOps proxy with live client-side Web Crypto telemetry.<br>
+            <span style="font-size:12px; color:var(--text-muted); margin-top:4px; display:block;">Click any quick prompt above or ask about file security, audit anomalies, or firewall rules.</span>
+          </div>
         </div>
       </div>
-      <div class="ai-input-area">
-        <input type="text" id="aiInput" placeholder="Ask AI to analyze a file or generate secure notes..." onkeypress="handleAiKey(event)" autocomplete="off" />
-        <button class="ai-send-btn" onclick="sendAiMessage()">
+
+      <!-- Input Bar -->
+      <div class="ai-input-area" style="display:flex; padding:12px; border-top:1px solid var(--border); background:rgba(10,15,30,0.85); gap:10px; align-items:center;">
+        <input type="text" id="aiInput" placeholder="Ask AI Copilot about crypto algorithms, entropy, or firewall rules..." onkeypress="handleAiKey(event)" autocomplete="off" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-size:13px; color:var(--text); font-family:monospace;" />
+        <button id="aiSendBtn" class="ai-send-btn" onclick="sendAiMessage()" style="background:var(--primary); color:white; border:none; border-radius:var(--radius); width:44px; height:44px; display:grid; place-items:center; cursor:pointer; flex-shrink:0;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
         </button>
       </div>
@@ -1485,6 +1541,66 @@
           <button class="modal-close-btn" style="margin-top:0;" onclick="closeMfaModal()">Cancel</button>
         </div>
       </div>
+    </div>
+  <!-- Database & Account Management Modal -->
+  <div class="modal-overlay" id="databaseModal" style="display:none; z-index:10002;">
+    <div class="modal-card" style="max-width:560px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M12 2C6.48 2 2 4.02 2 6.5s4.48 4.5 10 4.5 10-2.02 10-4.5S17.52 2 12 2z"/><path d="M2 6.5v11C2 20 6.48 22 12 22s10-2 10-4.5v-11"/><path d="M2 12c0 2.48 4.48 4.5 10 4.5s10-2.02 10-4.5"/></svg>
+          <h3 style="font-size:18px; font-weight:800; color:var(--text); margin:0;">Database & Account Center</h3>
+        </div>
+        <button class="action-btn-sm" style="background:transparent; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;" onclick="closeDatabaseModal()">✕</button>
+      </div>
+
+      <!-- Database Status Badge -->
+      <div id="dbModalStatusDetails" class="db-status-badge" style="padding:12px 16px; border-radius:var(--radius); border:1px solid var(--border); font-size:13px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+        🔵 Active Engine: Client-Side IndexedDB Database
+      </div>
+
+      <!-- Quick Social Login Unit -->
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:16px;">
+        <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px;">Identity Association</div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Log in or associate your vault session with Google or GitHub identity across all units.</p>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+          <button type="button" class="sso-btn sso-btn-google" onclick="closeDatabaseModal(); handleGoogleSignIn();" style="padding:8px 12px; font-size:13px;">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9c-.4-.7-.6-1.5-.6-2.4z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/></svg>
+            <span>Google Login</span>
+          </button>
+          <button type="button" class="sso-btn sso-btn-github" onclick="closeDatabaseModal(); handleGitHubSignIn();" style="padding:8px 12px; font-size:13px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+            <span>GitHub Login</span>
+          </button>
+        </div>
+
+        <div style="font-size:12px; display:flex; justify-content:space-between; color:var(--text-muted); border-top:1px dashed var(--border); padding-top:8px; margin-top:4px;">
+          <span>Current Account: <strong id="dbModalCurrentUser" style="color:var(--text);">Guest User</strong></span>
+          <span id="dbModalAuthProvider"></span>
+        </div>
+      </div>
+
+      <!-- Storage Info & Controls -->
+      <div style="background:rgba(99,102,241,0.04); border:1px solid rgba(99,102,241,0.15); border-radius:var(--radius); padding:16px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:13px; font-weight:700; color:var(--primary-light);">Vault Storage Status</span>
+          <span id="dbModalFileCount" style="font-size:12px; font-weight:600; color:var(--text);">0 items</span>
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Synced database collections: <code>users</code>, <code>virtual_files</code>, <code>ledger</code>, <code>audit_logs</code>.</p>
+        
+        <div style="display:flex; gap:10px;">
+          <button class="open-folder-btn" style="flex:1; justify-content:center; font-size:12px; padding:8px;" onclick="testDatabaseConnection()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Test Connection
+          </button>
+          <button class="open-folder-btn" style="flex:1; justify-content:center; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); color:#10b981; font-size:12px; padding:8px;" onclick="triggerManualDBSync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            Sync Database
+          </button>
+        </div>
+      </div>
+
+      <button class="modal-close-btn" style="width:100%;" onclick="closeDatabaseModal()">Close</button>
     </div>
   </div>
 

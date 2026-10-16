@@ -99,10 +99,36 @@ async def legacy_chat(req: Request):
         if not prompt and messages:
             prompt = messages[-1].get("content", "")
 
-        return StreamingResponse(
-            stream_copilot_response(prompt, []),
-            media_type="text/event-stream"
-        )
+        accept_header = req.headers.get("accept", "")
+        wants_stream = body.get("stream") is True or "text/event-stream" in accept_header
+
+        if wants_stream:
+            return StreamingResponse(
+                stream_copilot_response(prompt, []),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no"
+                }
+            )
+
+        from app.services.gemini_service import get_copilot_json_response
+        reply_text = await get_copilot_json_response(prompt, [])
+        return JSONResponse(content={
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": reply_text
+                    }
+                }
+            ],
+            "quota": {
+                "remaining": 20,
+                "limit": 20
+            }
+        })
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
