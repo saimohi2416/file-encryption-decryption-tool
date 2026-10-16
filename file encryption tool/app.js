@@ -3017,6 +3017,23 @@ let copilotHistory = [
 
 function handleAiKey(e) {
   if (e.key === 'Enter') sendAiMessage();
+}
+
+function promptApiKey() {
+  const currentKey = localStorage.getItem('sv_gemini_api_key') || '';
+  const newKey = prompt('Enter your Google Gemini API Key (stored locally in browser storage):', currentKey);
+  if (newKey !== null) {
+    const trimmed = newKey.trim();
+    if (trimmed) {
+      localStorage.setItem('sv_gemini_api_key', trimmed);
+      alert('✅ Gemini API Key saved locally. Your next message will use this key.');
+    } else {
+      localStorage.removeItem('sv_gemini_api_key');
+      alert('Gemini API Key removed.');
+    }
+  }
+}
+
 function quickPrompt(promptText) {
   const input = document.getElementById('aiInput') || document.getElementById('copilot-chat-input');
   if (input) {

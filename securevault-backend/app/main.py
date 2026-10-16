@@ -66,13 +66,14 @@ async def api_copilot(req: Request):
         body = await req.json()
         message = body.get("message") or body.get("prompt", "")
         dashboard_context = body.get("dashboardContext", {})
+        user_key = req.headers.get("x-gemini-key")
         
         full_prompt = message
         if dashboard_context:
             full_prompt = f"{message}\n\nSanitized Context:\n{json.dumps(dashboard_context)}"
             
         return StreamingResponse(
-            stream_copilot_response(full_prompt, []),
+            stream_copilot_response(full_prompt, [], api_key=user_key),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -90,6 +91,7 @@ async def legacy_chat(req: Request):
         messages = body.get("messages", [])
         prompt = ""
         history = []
+        user_key = req.headers.get("x-gemini-key")
         for msg in messages:
             if msg.get("role") == "user":
                 prompt = msg.get("content", "")
@@ -104,7 +106,7 @@ async def legacy_chat(req: Request):
 
         if wants_stream:
             return StreamingResponse(
-                stream_copilot_response(prompt, []),
+                stream_copilot_response(prompt, [], api_key=user_key),
                 media_type="text/event-stream",
                 headers={
                     "Cache-Control": "no-cache",
@@ -114,7 +116,7 @@ async def legacy_chat(req: Request):
             )
 
         from app.services.gemini_service import get_copilot_json_response
-        reply_text = await get_copilot_json_response(prompt, [])
+        reply_text = await get_copilot_json_response(prompt, [], api_key=user_key)
         return JSONResponse(content={
             "choices": [
                 {

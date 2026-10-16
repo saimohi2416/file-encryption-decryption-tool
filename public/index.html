@@ -988,6 +988,12 @@
           <input type="checkbox" id="copilot-context-toggle" checked style="accent-color:var(--primary);" />
           <span>🔗 Include Live Dashboard Context</span>
         </label>
+        <button id="copilot-key-btn" title="Configure Gemini API Key" class="action-btn-sm" onclick="promptApiKey()" style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:var(--primary-light); font-size:12px; display:flex; align-items:center; gap:4px;">
+          ⚙️ API Key
+        </button>
+        <button class="action-btn-sm" onclick="clearAiChat()" title="Clear Chat History" style="background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border); font-size:12px;">
+          Clear Chat
+        </button>
         <button id="copilot-purge-btn" title="Purge Chat Memory" class="action-btn-sm" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; font-size:12px;">
           🗑️ Purge Memory
         </button>
