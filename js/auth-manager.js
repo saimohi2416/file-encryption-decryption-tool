@@ -112,10 +112,10 @@ export class AuthManager {
 
   renderAuthenticatedState(user) {
     // 1. Sidebar Profile Card Update
-    const userAvatarEl = document.getElementById('sidebar-user-avatar');
-    const userNameEl = document.getElementById('sidebar-user-name');
-    const userEmailEl = document.getElementById('sidebar-user-email');
-    const userBadgeEl = document.getElementById('sidebar-user-badge');
+    const userAvatarEl = document.getElementById('sidebar-user-avatar') || document.getElementById('userAvatar');
+    const userNameEl = document.getElementById('sidebar-user-name') || document.getElementById('userNameDisplay');
+    const userEmailEl = document.getElementById('sidebar-user-email') || document.getElementById('userSubDisplay');
+    const userBadgeEl = document.getElementById('sidebar-user-badge') || document.getElementById('userProviderBadge');
 
     if (userAvatarEl) {
       if (user.avatar_url) {
@@ -153,7 +153,7 @@ export class AuthManager {
     }
 
     // 3. Resolve bottom-left DB badge
-    const dbStatusBadge = document.getElementById('db-status-badge');
+    const dbStatusBadge = document.getElementById('db-status-badge') || document.getElementById('dbStatusIndicator');
     if (dbStatusBadge) {
       dbStatusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-cyan-400 mr-1.5 animate-pulse"></span>🔵 DB: Synced (OAuth + IndexedDB)`;
       dbStatusBadge.className = 'text-xs px-2.5 py-1 rounded bg-slate-900 border border-cyan-800 text-cyan-300 font-mono flex items-center';
@@ -161,10 +161,10 @@ export class AuthManager {
   }
 
   renderGuestState() {
-    const userAvatarEl = document.getElementById('sidebar-user-avatar');
-    const userNameEl = document.getElementById('sidebar-user-name');
-    const userEmailEl = document.getElementById('sidebar-user-email');
-    const userBadgeEl = document.getElementById('sidebar-user-badge');
+    const userAvatarEl = document.getElementById('sidebar-user-avatar') || document.getElementById('userAvatar');
+    const userNameEl = document.getElementById('sidebar-user-name') || document.getElementById('userNameDisplay');
+    const userEmailEl = document.getElementById('sidebar-user-email') || document.getElementById('userSubDisplay');
+    const userBadgeEl = document.getElementById('sidebar-user-badge') || document.getElementById('userProviderBadge');
 
     if (userAvatarEl) userAvatarEl.innerHTML = `<span class="text-sm font-bold text-slate-400">U</span>`;
     if (userNameEl) userNameEl.textContent = 'Guest User';
@@ -184,7 +184,7 @@ export class AuthManager {
       `;
     }
 
-    const dbStatusBadge = document.getElementById('db-status-badge');
+    const dbStatusBadge = document.getElementById('db-status-badge') || document.getElementById('dbStatusIndicator');
     if (dbStatusBadge) {
       dbStatusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5"></span>🟢 DB: IndexedDB (Local Guest)`;
       dbStatusBadge.className = 'text-xs px-2.5 py-1 rounded bg-slate-900 border border-emerald-800 text-emerald-300 font-mono flex items-center';

@@ -151,11 +151,11 @@
         </a>
       </nav>
       <div class="user-display-card hidden" id="userDisplayCard" style="margin-top: auto;">
-        <div class="user-display-avatar" id="userAvatar">U</div>
+        <div class="user-display-avatar" id="sidebar-user-avatar"><span id="userAvatar">U</span></div>
         <div class="user-display-info">
-          <div class="user-display-name" id="userNameDisplay">Username</div>
-          <div class="user-display-sub" id="userSubDisplay">Active Session</div>
-          <div id="userProviderBadge" class="auth-provider-badge-wrap"></div>
+          <div class="user-display-name" id="sidebar-user-name"><span id="userNameDisplay">Username</span></div>
+          <div class="user-display-sub" id="sidebar-user-email"><span id="userSubDisplay">Active Session</span></div>
+          <div id="sidebar-user-badge" class="auth-provider-badge-wrap"><span id="userProviderBadge"></span></div>
         </div>
       </div>
       <div class="logout-btn-wrap hidden" id="logoutBtnWrap">
@@ -168,8 +168,8 @@
         <div class="status-indicator">
           <span class="pulse-dot" style="background:var(--accent);"></span> System Secured
         </div>
-        <div class="status-indicator" id="dbStatusIndicator" style="margin-top: 6px; font-size: 11px; opacity: 0.85; cursor: pointer;" title="Database Connectivity Status - Click to open Database Settings" onclick="openDatabaseModal()">
-          <span class="pulse-dot" style="background:#94a3b8; width:8px; height:8px; animation: none;"></span> DB: Checking...
+        <div class="status-indicator" id="db-status-badge" style="margin-top: 6px; font-size: 11px; opacity: 0.85; cursor: pointer;" title="Database Connectivity Status - Click to open Database Settings" onclick="openDatabaseModal()">
+          <span id="dbStatusIndicator"><span class="pulse-dot" style="background:#94a3b8; width:8px; height:8px; animation: none;"></span> DB: Checking...</span>
         </div>
       </div>
     </aside>
@@ -1053,7 +1053,7 @@
 
     <div class="ai-container" style="display:flex; flex-direction:column; height:540px; background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;">
       <!-- Chat Message Stream Scroll Area -->
-      <div id="aiChatWindow" class="ai-chat-window" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px;">
+      <div id="copilot-chat-container" data-alias="aiChatWindow" class="ai-chat-window" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px;">
         <div class="ai-msg ai-sys">
           <div class="ai-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg></div>
           <div class="ai-bubble">
@@ -1066,8 +1066,8 @@
 
       <!-- Input Bar -->
       <div class="ai-input-area" style="display:flex; padding:12px; border-top:1px solid var(--border); background:rgba(10,15,30,0.85); gap:10px; align-items:center;">
-        <input type="text" id="aiInput" placeholder="Ask AI Copilot about crypto algorithms, entropy, or firewall rules..." onkeypress="handleAiKey(event)" autocomplete="off" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-size:13px; color:var(--text); font-family:monospace;" />
-        <button id="aiSendBtn" class="ai-send-btn" onclick="sendAiMessage()" style="background:var(--primary); color:white; border:none; border-radius:var(--radius); width:44px; height:44px; display:grid; place-items:center; cursor:pointer; flex-shrink:0;">
+        <input type="text" id="copilot-chat-input" data-alias="aiInput" placeholder="Ask AI Copilot about crypto algorithms, entropy, or firewall rules..." onkeypress="handleAiKey(event)" autocomplete="off" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-size:13px; color:var(--text); font-family:monospace;" />
+        <button id="copilot-send-btn" data-alias="aiSendBtn" class="ai-send-btn" onclick="sendAiMessage()" style="background:var(--primary); color:white; border:none; border-radius:var(--radius); width:44px; height:44px; display:grid; place-items:center; cursor:pointer; flex-shrink:0;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
         </button>
       </div>
@@ -1380,7 +1380,7 @@
       
       <!-- SSO / Social Authentication Section -->
       <div class="sso-buttons-container">
-        <button type="button" class="sso-btn sso-btn-google" onclick="handleGoogleSignIn()" id="googleSignInBtn" title="Sign in with your Google account">
+        <button type="button" class="sso-btn sso-btn-google" onclick="handleGoogleSignIn()" id="btn-oauth-google" data-action="oauth-google" title="Sign in with your Google account">
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
             <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
@@ -1390,7 +1390,7 @@
           <span>Continue with Google</span>
         </button>
 
-        <button type="button" class="sso-btn sso-btn-github" onclick="handleGitHubSignIn()" id="githubSignInBtn" title="Sign in with your GitHub account">
+        <button type="button" class="sso-btn sso-btn-github" onclick="handleGitHubSignIn()" id="btn-oauth-github" data-action="oauth-github" title="Sign in with your GitHub account">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
           </svg>
